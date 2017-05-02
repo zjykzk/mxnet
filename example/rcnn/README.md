@@ -47,6 +47,21 @@ All reference results are from original publications.
 All VOC experiments are conducted in MXNet-v0.9.1-nnvm. MXNet-v0.8 have similar results.
 All COCO experiments are conducted in MXNet-v0.8.
 
+## Training with ImageNet samples
+* add soft link with dataset
+```bash
+    ln -s data/imagenet /disk2/data/ILSVRC2015
+```
+* add soft link with training scripts
+```bash
+    cd data/imagenet/DET/ImageSets/DET
+    ln -s train.txt trainXXX.txt
+```
+* runing training scripts
+```bash
+    bash script/vgg_voc07.sh 0,1,2,3
+```
+
 ## I'm Feeling Lucky
 * Prepare: `bash script/additional_deps.sh`
 * Download training data: `bash script/get_voc.sh`
