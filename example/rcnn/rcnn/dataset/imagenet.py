@@ -112,6 +112,9 @@ class imagenet(IMDB):
             with open(cache_file, 'rb') as fid:
                 roidb = cPickle.load(fid)
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
+	    for gt in roidb:
+		if gt['boxes'].shape[0]==0:
+		   print(gt['image'])
             return roidb
 
         gt_roidb = [self.load_imagenet_annotation(index) for index in self.image_set_index]
@@ -153,10 +156,16 @@ class imagenet(IMDB):
         for ix, obj in enumerate(objs):
             bbox = obj.find('bndbox')
             # Make pixel indexes 0-based
-            x1 = float(bbox.find('xmin').text) - 1
-            y1 = float(bbox.find('ymin').text) - 1
-            x2 = float(bbox.find('xmax').text) - 1
-            y2 = float(bbox.find('ymax').text) - 1
+            x1 = float(bbox.find('xmin').text) 
+            y1 = float(bbox.find('ymin').text) 
+            x2 = float(bbox.find('xmax').text)
+            if x2 == size[1]:
+		print ("label xmax reach the image width")
+		x2 = x2 - 1 
+            y2 = float(bbox.find('ymax').text)
+	    if y2 == size[0]:
+		print ("label ymax reach the image height")
+		y2 = y2 - 1
             cls = class_to_index[obj.find('name').text.lower().strip()]
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = cls
