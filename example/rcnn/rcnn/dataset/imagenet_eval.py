@@ -103,7 +103,7 @@ def imagenet_eval(detpath, annopath, imageset_file, classname, annocache, ovthre
         bbox = np.array([x['bbox'] for x in objects])
 #        difficult = np.array([x['difficult'] for x in objects]).astype(np.bool)
         det = [False] * len(objects)  # stand for detected
-        npos = npos #+ sum(~difficult)
+        npos = npos + len(objects)
         class_recs[image_filename] = {'bbox': bbox,
  #                                     'difficult': difficult,
                                       'det': det}
