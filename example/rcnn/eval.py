@@ -47,12 +47,10 @@ def main():
     else:
 	exp = cc.open_experiment(args.exp_name)
 
-    mAp = [1,2,5];
     for x in args.epoch.split(","):	
 	mAp = test_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               ctx, args.prefix,int(x),
               args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh)
-	os.path.re
     	exp.add_scalar_value('mAp', mAp)
     return 
     
