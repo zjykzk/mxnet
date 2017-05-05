@@ -13,7 +13,7 @@ import os
 import numpy as np
 
 from imdb import IMDB
-from pascal_voc_eval import voc_eval
+from imagenet_eval import imagenet_eval
 from ds_utils import unique_boxes, filter_small_boxes
 
 imagenet_classes = np.array(['__background__',\
@@ -64,8 +64,8 @@ class imagenet(IMDB):
         # year, image_set = image_set.split('_')
         super(imagenet, self).__init__('imagenet_', image_set, root_path, devkit_path)  # set self.name
         # self.year = year
-	print (devkit_path)
-	print ("devkit")
+#	print (devkit_path)
+#	print ("devkit")
         self.root_path = root_path
         self.devkit_path = devkit_path
         self.data_path = os.path.join(devkit_path, 'DET')
@@ -88,8 +88,10 @@ class imagenet(IMDB):
         image_set_index_file = os.path.join(self.data_path, 'ImageSets', 'DET', self.image_set + '.txt')
         assert os.path.exists(image_set_index_file), 'Path does not exist: {}'.format(image_set_index_file)
         with open(image_set_index_file) as f:
-              image_set_index = [x.strip() for x in f.readlines()]
-   	#     image_set_index = [x.split(' ')[0] for x in f.readlines()]
+              if self.image_set == "val":
+   	      	image_set_index = [x.split(' ')[0] for x in f.readlines()]
+              else:
+		image_set_index = [x.strip() for x in f.readlines()]
         return image_set_index
 
     def image_path_from_index(self, index):
@@ -237,10 +239,10 @@ class imagenet(IMDB):
         result_dir = os.path.join(self.devkit_path, 'results')
         if not os.path.exists(result_dir):
             os.mkdir(result_dir)
-        year_folder = os.path.join(self.devkit_path, 'results', 'VOC' + self.year)
+        year_folder = os.path.join(self.devkit_path, 'results', 'ImageNet')
         if not os.path.exists(year_folder):
             os.mkdir(year_folder)
-        res_file_folder = os.path.join(self.devkit_path, 'results', 'VOC' + self.year, 'Main')
+        res_file_folder = os.path.join(self.devkit_path, 'results', 'ImageNet' , 'Main')
         if not os.path.exists(res_file_folder):
             os.mkdir(res_file_folder)
 
@@ -253,7 +255,7 @@ class imagenet(IMDB):
         VOCdevkit/results/VOC2007/Main/<comp_id>_det_test_aeroplane.txt
         :return: a string template
         """
-        res_file_folder = os.path.join(self.devkit_path, 'results', 'VOC' + self.year, 'Main')
+        res_file_folder = os.path.join(self.devkit_path, 'results', 'ImageNet', 'Main')
         comp_id = self.config['comp_id']
         filename = comp_id + '_det_' + self.image_set + '_{:s}.txt'
         path = os.path.join(res_file_folder, filename)
@@ -286,19 +288,32 @@ class imagenet(IMDB):
         python evaluation wrapper
         :return: None
         """
-        annopath = os.path.join(self.data_path, 'Annotations', '{0!s}.xml')
-        imageset_file = os.path.join(self.data_path, 'ImageSets', 'Main', self.image_set + '.txt')
+        annopath = os.path.join(self.data_path, 'Annotations',"DET",self.image_set, '{0!s}.xml')
+        imageset_file = os.path.join(self.data_path, 'ImageSets', 'DET', self.image_set + '.txt')
         annocache = os.path.join(self.cache_path, self.name + '_annotations.pkl')
         aps = []
         # The PASCAL VOC metric changed in 2010
-        use_07_metric = True if int(self.year) < 2010 else False
+        use_07_metric = True # if int(self.year) < 2010 else False
         print('VOC07 metric? ' + ('Y' if use_07_metric else 'No'))
         for cls_ind, cls in enumerate(self.classes):
             if cls == '__background__':
                 continue
             filename = self.get_result_file_template().format(cls)
-            rec, prec, ap = voc_eval(filename, annopath, imageset_file, cls, annocache,
+            rec, prec, ap = imagenet_eval(filename, annopath, imageset_file, cls, annocache,
                                      ovthresh=0.5, use_07_metric=use_07_metric)
             aps += [ap]
             print('AP for {} = {:.4f}'.format(cls, ap))
         print('Mean AP = {:.4f}'.format(np.mean(aps)))
+	self.ap = aps
+    def save_ap(self,path = "saveap.txt"):
+	with open(path,"w") as f:
+	    for cls_ind, cls in enumerate(self.classes):
+                if cls == '__background__':
+                    continue
+                filename = self.get_result_file_template().format(cls)
+                rec, prec, ap = imagenet_eval(filename, annopath, imageset_file, cls, annocache,
+                                     ovthresh=0.5, use_07_metric=use_07_metric)
+                aps += [ap]
+                f.write('AP for {} = {:.4f}'.format(cls, ap))
+            f.write('Mean AP = {:.4f}'.format(np.mean(aps)))
+	
