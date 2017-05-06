@@ -9,6 +9,7 @@ from ..dataset import *
 from ..core.loader import TestLoader
 from ..core.tester import Predictor, pred_eval
 from ..utils.load_model import load_param
+import numpy as np
 
 
 def test_rcnn(network, dataset, image_set, root_path, dataset_path,
@@ -71,7 +72,9 @@ def test_rcnn(network, dataset, image_set, root_path, dataset_path,
 
     # start detection
     pred_eval(predictor, test_data, imdb, vis=vis, thresh=thresh)
+    if dataset == "imagenet":
 
+         return np.mean(imdb.ap)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
