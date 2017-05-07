@@ -103,12 +103,12 @@ def repeat(inputs, repetitions, layer, *args, **kwargs):
 
 def get_inceptionresnet_conv(data):
     # inceptionresnet 1
-    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3), stride=(2, 2))  # 【*,32,149,149】
+    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3), stride=(2, 2))  #[ ,32,149,149]
     # inceptionresnet 2
     conv2a_3_3 = ConvFactory(incption_1, 32, (3, 3)) # reduce the size -1
     conv2b_3_3 = ConvFactory(conv2a_3_3, 64, (3, 3), pad=(1, 1))
     incption_2 = mx.symbol.Pooling(
-        data=conv2b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max') # [*，64,73,73]
+        data=conv2b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max') # [*,64,73,73]
     # inceptionresnet 3
     conv3a_1_1 = ConvFactory(incption_2, 80, (1, 1))
     conv3b_3_3 = ConvFactory(conv3a_1_1, 192, (3, 3))
@@ -178,7 +178,7 @@ def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config
     rpn_cls_act_reshape = mx.symbol.Reshape(
         data=rpn_cls_act, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_act_reshape')
     if config.TRAIN.CXX_PROPOSAL:
-        rois = mx.contrib.symbol.Proposal(
+        rois = mx.symbol.Proposal(
             cls_prob=rpn_cls_act_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
             feature_stride=config.RPN_FEAT_STRIDE, scales=tuple(config.ANCHOR_SCALES), ratios=tuple(config.ANCHOR_RATIOS),
             rpn_pre_nms_top_n=config.TRAIN.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=config.TRAIN.RPN_POST_NMS_TOP_N,
