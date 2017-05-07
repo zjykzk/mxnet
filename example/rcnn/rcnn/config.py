@@ -150,6 +150,15 @@ dataset.coco.dataset_path = 'data/coco'
 dataset.coco.NUM_CLASSES = 81
 
 
+dataset.imagenet = edict()
+dataset.imagenet.dataset = 'imagenet'
+dataset.imagenet.image_set = 'train'
+dataset.imagenet.test_image_set = 'test.txt'
+dataset.imagenet.root_path = 'data'
+dataset.imagenet.dataset_path = 'data/imagenet'
+dataset.imagenet.NUM_CLASSES = 201
+
+
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():
         if k in config:
