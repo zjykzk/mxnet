@@ -143,7 +143,7 @@ network.inceptionresnet.PIXEL_MEANS = np.array([0, 0, 0])
 network.inceptionresnet.IMAGE_STRIDE = 0
 network.inceptionresnet.RPN_FEAT_STRIDE = 16
 network.inceptionresnet.RCNN_FEAT_STRIDE = 16
-network.inceptionresnet.FIXED_PARAMS = ['conv0', 'stage1', 'gamma', 'beta']
+network.inceptionresnet.FIXED_PARAMS = ['conv1', 'conv2', 'conv3']
 network.inceptionresnet.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'gamma', 'beta']
 
 

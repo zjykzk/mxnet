@@ -121,17 +121,17 @@ def repeat(inputs, repetitions, layer,name, *args, **kwargs):
 
 def get_inceptionresnet_conv(data):
     # inceptionresnet 1
-    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3), stride=(2, 2),name = "conv1_3x3_s2")  #[ ,32,149,149]
+    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3),pad=(2,2), stride=(2, 2),name = "conv1_3x3_s2")  #[ ,32,149,149]
     # inceptionresnet 2
-    conv2a_3_3 = ConvFactory(incption_1, 32, (3, 3),name="conv2_3x3_s1") # reduce the size -1
+    conv2a_3_3 = ConvFactory(incption_1, 32, (3, 3), pad=(1, 1),name="conv2_3x3_s1") # reduce the size -1
     conv2b_3_3 = ConvFactory(conv2a_3_3, 64, (3, 3), pad=(1, 1),name="conv3_3x3_s1")
     incption_2 = mx.symbol.Pooling(
         data=conv2b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max') # [*,64,73,73]
     # inceptionresnet 3
     conv3a_1_1 = ConvFactory(incption_2, 80, (1, 1),name="conv4_3x3_reduce")
-    conv3b_3_3 = ConvFactory(conv3a_1_1, 192, (3, 3),name="conv4_3x3")
+    conv3b_3_3 = ConvFactory(conv3a_1_1, 192, (3, 3),pad=(1,1),name="conv4_3x3")
     incption_3 = mx.symbol.Pooling(
-        data=conv3b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max')  # [*,192,35,35]
+        data=conv3b_3_3, kernel=(3, 3), stride=(2, 2),pad=(2,2), pool_type='max')  # [*,192,35,35]
     # inceptionresnet 4
     tower_conv = ConvFactory(incption_3, 96, (1, 1),name="conv5_1x1")
     tower_conv1_0 = ConvFactory(incption_3, 48, (1, 1),name= "conv5_5x5_reduce")
@@ -170,6 +170,7 @@ def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config
     # shared convolutional layers
     conv_feat = get_inceptionresnet_conv(data)
 
+    #print(conv_feat)
     # RPN layers
     rpn_conv = mx.symbol.Convolution(
         data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
