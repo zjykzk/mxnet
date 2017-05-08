@@ -52,15 +52,17 @@ def ConvFactory(data, num_filter, kernel, stride=(1, 1), pad=(0, 0), act_type="r
             return bn
 
 def block35(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', mirror_attr={},name=""):# inception resnet
-    tower_conv = ConvFactory(net, 32, (1, 1),name= name+"_1X1") #inception_resnet_v2_a1_1x1
-    tower_conv1_0 = ConvFactory(net, 32, (1, 1),name= name+"_3X3_reduce") # #inception_resnet_v2_a1_3X3_reduce
-    tower_conv1_1 = ConvFactory(tower_conv1_0, 32, (3, 3), pad=(1, 1),name= name+"_3X3")
-    tower_conv2_0 = ConvFactory(net, 32, (1, 1),name=name+"_3X3_2_reduce") # inception_resnet_v2_a1_3x3_2_reduce
-    tower_conv2_1 = ConvFactory(tower_conv2_0, 48, (3, 3), pad=(1, 1),name="_3X3_2")#inception_resnet_v2_a1_3x3_2
-    tower_conv2_2 = ConvFactory(tower_conv2_1, 64, (3, 3), pad=(1, 1),name="_3X3_3")
+    tower_conv = ConvFactory(net, 32, (1, 1),name= name+"_1x1") #inception_resnet_v2_a1_1x1
+    tower_conv1_0 = ConvFactory(net, 32, (1, 1),name= name+"_3x3_reduce") # #inception_resnet_v2_a1_3X3_reduce
+    tower_conv1_1 = ConvFactory(tower_conv1_0, 32, (3, 3), pad=(1, 1),name= name+"_3x3")
+    tower_conv2_0 = ConvFactory(net, 32, (1, 1),name=name+"_3x3_2_reduce") # inception_resnet_v2_a1_3x3_2_reduce
+    tower_conv2_1 = ConvFactory(tower_conv2_0, 48, (3, 3), pad=(1, 1),name=name+"_3x3_2")#inception_resnet_v2_a1_3x3_2
+    tower_conv2_2 = ConvFactory(tower_conv2_1, 64, (3, 3), pad=(1, 1),name=name+"_3x3_3")
     tower_mixed = mx.symbol.Concat(*[tower_conv, tower_conv1_1, tower_conv2_2])
-    tower_out = ConvFactory(
-        tower_mixed, input_num_channels, (1, 1), with_act=False,no_bias=False,name=name+"_up")# "inception_resnet_v2_a1_up"
+    tower_out = mx.symbol.Convolution(
+            data=tower_mixed, num_filter=input_num_channels, kernel=(1,1), stride=(1,1), pad=(0,0),name=name+"_up",no_bias=False)
+    #tower_out = ConvFactory(
+    #    tower_mixed, input_num_channels, (1, 1), with_act=False,no_bias=False,name=name+"_up")# "inception_resnet_v2_a1_up"
 
     net += scale * tower_out
     if with_act:
@@ -72,13 +74,15 @@ def block35(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', 
 
 
 def block17(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', mirror_attr={},name=""):
-    tower_conv = ConvFactory(net, 192, (1, 1),name=name+"_1X1")
-    tower_conv1_0 = ConvFactory(net, 129, (1, 1),name=name+"_1X7_reduce") #inception_resnet_v2_b1_1x7_reduce
-    tower_conv1_1 = ConvFactory(tower_conv1_0, 160, (1, 7), pad=(0, 3),name=name+"_1X7")
-    tower_conv1_2 = ConvFactory(tower_conv1_1, 192, (7, 1), pad=(3, 0),name=name+"_7X1")
+    tower_conv = ConvFactory(net, 192, (1, 1),name=name+"_1x1")
+    tower_conv1_0 = ConvFactory(net, 128, (1, 1),name=name+"_1x7_reduce") #inception_resnet_v2_b1_1x7_reduce
+    tower_conv1_1 = ConvFactory(tower_conv1_0, 160, (1, 7), pad=(0, 3),name=name+"_1x7")
+    tower_conv1_2 = ConvFactory(tower_conv1_1, 192, (7, 1), pad=(3, 0),name=name+"_7x1")
     tower_mixed = mx.symbol.Concat(*[tower_conv, tower_conv1_2])
-    tower_out = ConvFactory(
-        tower_mixed, input_num_channels, (1, 1), with_act=False,name=name+"_up",no_bias=False)#inception_resnet_v2_b1_up
+    tower_out = mx.symbol.Convolution(
+            data=tower_mixed, num_filter=input_num_channels, kernel=(1,1), stride=(1,1), pad=(0,0),name=name+"_up",no_bias=False)
+ #   tower_out = ConvFactory(
+ #       tower_mixed, input_num_channels, (1, 1), with_act=False,name=name+"_up",no_bias=False)#inception_resnet_v2_b1_up
     net += scale * tower_out
     if with_act:
         act = mx.symbol.Activation(
@@ -89,13 +93,15 @@ def block17(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', 
 
 
 def block8(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', mirror_attr={},name=""):
-    tower_conv = ConvFactory(net, 192, (1, 1),name=name+"_1X1") #inception_resnet_v2_c1_1x1
-    tower_conv1_0 = ConvFactory(net, 192, (1, 1),name=name+"_1X3_reduce") #inception_resnet_v2_c1_1x3_reduce
-    tower_conv1_1 = ConvFactory(tower_conv1_0, 224, (1, 3), pad=(0, 1),name=name+"_1X3")#inception_resnet_v2_c1_1x3
-    tower_conv1_2 = ConvFactory(tower_conv1_1, 256, (3, 1), pad=(1, 0),name=name+"_3X1")
+    tower_conv = ConvFactory(net, 192, (1, 1),name=name+"_1x1") #inception_resnet_v2_c1_1x1
+    tower_conv1_0 = ConvFactory(net, 192, (1, 1),name=name+"_1x3_reduce") #inception_resnet_v2_c1_1x3_reduce
+    tower_conv1_1 = ConvFactory(tower_conv1_0, 224, (1, 3), pad=(0, 1),name=name+"_1x3")#inception_resnet_v2_c1_1x3
+    tower_conv1_2 = ConvFactory(tower_conv1_1, 256, (3, 1), pad=(1, 0),name=name+"_3x1")
     tower_mixed = mx.symbol.Concat(*[tower_conv, tower_conv1_2])
-    tower_out = ConvFactory(
-        tower_mixed, input_num_channels, (1, 1), with_act=False,name=name+"_up",no_bias=False)#inception_resnet_v2_c1_up
+    tower_out = mx.symbol.Convolution(
+            data=tower_mixed, num_filter=input_num_channels, kernel=(1,1), stride=(1,1), pad=(0,0),name=name+"_up",no_bias=False)
+ #tower_out = ConvFactory(
+ #       tower_mixed, input_num_channels, (1, 1), with_act=False,name=name+"_up",no_bias=False)#inception_resnet_v2_c1_up
     net += scale * tower_out
     if with_act:
         act = mx.symbol.Activation(
@@ -108,7 +114,7 @@ def block8(net, input_num_channels, scale=1.0, with_act=True, act_type='relu', m
 def repeat(inputs, repetitions, layer,name, *args, **kwargs):
     outputs = inputs
     for i in range(repetitions):
-        outputs = layer(outputs, *args, **kwargs,name=name.format(i))
+        outputs = layer(outputs,name=name.format(i+1), *args, **kwargs)
     return outputs
 
 
@@ -141,7 +147,7 @@ def get_inceptionresnet_conv(data):
     stem_inception_4 = mx.symbol.Concat(
         *[tower_conv, tower_conv1_1, tower_conv2_2, tower_conv3_1])  # [*,320,35,35]
         ## resnet begin
-    res_out_4 = repeat(stem_inception_4, 10, block35, scale=0.17, input_num_channels=320,name="inception_resnet_v2_a{%d}")
+    res_out_4 = repeat(stem_inception_4, 10, block35, scale=0.17, input_num_channels=320,name="inception_resnet_v2_a{0}")
         #upscale and pooling
     tower_conv = ConvFactory(res_out_4, 384, (3, 3), stride=(2, 2),name="reduction_a_3x3")
     tower_conv1_0 = ConvFactory(res_out_4, 256, (1, 1),name="reduction_a_3x3_2_reduce")
@@ -215,10 +221,10 @@ def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config
 
     # Fast R-CNN
     roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(17, 17), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     #inception 5
-    net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088,name="inception_resnet_v2_b{%d}")
+    net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088,name="inception_resnet_v2_b{0}")
     tower_conv = ConvFactory(net, 256, (1, 1),name="reduction_b_3x3_reduce")
     tower_conv0_1 = ConvFactory(tower_conv, 384, (3, 3), stride=(2, 2),name="reduction_b_3x3")
     tower_conv1 = ConvFactory(net, 256, (1, 1),name="reduction_b_3x3_2_reduce")
@@ -231,7 +237,7 @@ def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config
     net = mx.symbol.Concat(
         *[tower_conv0_1, tower_conv1_1, tower_conv2_2, tower_pool])
     # inception 6
-    net = repeat(net, 9, block8, scale=0.2, input_num_channels=2080,name="inception_resnet_v2_c{%d}")
+    net = repeat(net, 9, block8, scale=0.2, input_num_channels=2080,name="inception_resnet_v2_c{0}")
     net = block8(net, with_act=False, input_num_channels=2080,name="inception_resnet_v2_c10")
 
     net = ConvFactory(net, 1536, (1, 1),name="conv6_1x1")
@@ -297,7 +303,7 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
 
     # Fast R-CNN
     roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(17, 17), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     # inception 5
     net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088, name="inception_resnet_v2_b{%d}")
