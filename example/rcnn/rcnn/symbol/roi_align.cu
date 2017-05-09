@@ -23,7 +23,7 @@ __global__ void ROIAlignForwardKernel(const int count, const Dtype* bottom_data,
                                      const int height, const int width,
                                      const int pooled_height, const int pooled_width,
                                      const Dtype* bottom_rois, Dtype* top_data,
-                                     Dtype* argmax_data_x, Dtype argmax_data_y) {
+                                     Dtype* argmax_data_x, Dtype* argmax_data_y) {
   for (int index = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
        index < count;
        index += blockDim.x * gridDim.x * gridDim.y) {
@@ -38,7 +38,8 @@ __global__ void ROIAlignForwardKernel(const int count, const Dtype* bottom_data,
 
     if (roi_batch_ind < 0) {
       top_data[index] = 0;
-      argmax_data[index] = 0;
+      argmax_data_x[index] = 0;
+      argmax_data_y[index] = 0;
       continue;
     }
 
@@ -109,8 +110,8 @@ __global__ void ROIAlignForwardKernel(const int count, const Dtype* bottom_data,
 
         if (val > maxval){
           maxval = val;
-          max_idx_x = w;
-          max_idx_y = h;
+          maxidx_x = w;
+          maxidx_y = h;
         }
       }
     }
@@ -143,7 +144,7 @@ inline void ROIAlignForward(const Tensor<gpu, 4, Dtype> &out,
   dim3 dimBlock(kMaxThreadsPerBlock);
   CheckLaunchParam(dimGrid, dimBlock, "ROIAlign Forward");
   cudaStream_t stream = Stream<gpu>::GetStream(out.stream_);
-  ROIPoolForwardKernel<Dtype><<<dimGrid, dimBlock, 0, stream>>>(
+  ROIAlignForwardKernel<Dtype><<<dimGrid, dimBlock, 0, stream>>>(
       count, bottom_data, spatial_scale, channels, height, width,
       pooled_height, pooled_width, bottom_rois, top_data, argmax_data_x, argmax_data_y);
 }
@@ -284,7 +285,7 @@ inline void ROIAlignForward(const Tensor<gpu, 4, Dtype> &out,
                            const Tensor<gpu, 4, Dtype> &max_idx_x,
                            const Tensor<gpu, 4, Dtype> &max_idx_y,
                            const float spatial_scale) {
-  cuda::ROIAlignorward(out, data, bbox, max_idx_x, max_idx_y, spatial_scale);
+  cuda::ROIAlignForward(out, data, bbox, max_idx_x, max_idx_y, spatial_scale);
 }
 
 template<typename Dtype>
@@ -302,6 +303,14 @@ inline void ROIAlignBackwardAcc(const Tensor<gpu, 4, Dtype> &in_grad,
 
 namespace mxnet {
 namespace op {
+
+/*
+NNVM_REGISTER_OP(ROIAlign)
+.set_attr<FCompute>("FCompute<gpu>", ROIAlignForward<gpu>);
+
+NNVM_REGISTER_OP(_backward_ROIAlign)
+.set_attr<FCompute>("FCompute<gpu>", ROIAlignBackwardAcc<gpu>);
+*/
 
 template<>
 Operator* CreateOp<gpu>(ROIAlignParam param, int dtype) {

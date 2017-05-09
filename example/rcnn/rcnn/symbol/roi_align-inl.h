@@ -69,7 +69,8 @@ class ROIAlignOp : public Operator {
     CHECK_EQ(data.CheckContiguous(), true);
     CHECK_EQ(bbox.CheckContiguous(), true);
     CHECK_EQ(out.CheckContiguous(), true);
-    CHECK_EQ(max_idx.CheckContiguous(), true);
+    CHECK_EQ(max_idx_x.CheckContiguous(), true);
+    CHECK_EQ(max_idx_y.CheckContiguous(), true)
     out = -FLT_MAX;
     max_idx_x = -1.0f;
     max_idx_y = -1.0f;
@@ -193,13 +194,13 @@ class ROIAlignProp : public OperatorProperty {
   }
 
   OperatorProperty* Copy() const override {
-    ROIAlignProp* roi_pooling_sym = new ROIAlignProp();
+    ROIAlignProp* roi_align_sym = new ROIAlignProp();
     roi_align_sym->param_ = this->param_;
     return roi_align_sym;
   }
 
   std::string TypeString() const override {
-    return "ROIPooling";
+    return "ROIAlign";
   }
 
   // decalre dependency and inplace optimization options
