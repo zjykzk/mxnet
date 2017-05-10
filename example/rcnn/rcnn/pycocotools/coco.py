@@ -1,5 +1,6 @@
-__author__ = 'tylin'
+from __future__ import print_function
 __version__ = '1.0.1'
+__author__ = 'tylin'
 # Interface for accessing the Microsoft COCO dataset.
 
 # Microsoft COCO is a large image dataset designed for object detection,
@@ -44,7 +45,6 @@ __version__ = '1.0.1'
 # Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
 # Licensed under the Simplified BSD License [see bsd.txt]
 
-from __future__ import print_function
 import json
 import datetime
 import time
