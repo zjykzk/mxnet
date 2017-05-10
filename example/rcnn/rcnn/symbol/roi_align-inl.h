@@ -53,9 +53,10 @@ class ROIAlignOp : public Operator {
                        const std::vector<TBlob> &out_data,
                        const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
-    size_t expected = 2;
-    CHECK_EQ(in_data.size(), expected);
-    CHECK_EQ(out_data.size(), expected);
+    size_t expected_in = 2;
+    size_t expected_out = 3;
+    CHECK_EQ(in_data.size(), expected_in);
+    CHECK_EQ(out_data.size(), expected_out);
     CHECK_EQ(out_data[roialign::kOut].shape_[0], in_data[roialign::kBox].shape_[0]);
     CHECK_EQ(out_data[roialign::kMaxIdx_x].shape_[0], in_data[roialign::kBox].shape_[0]);
     CHECK_EQ(out_data[roialign::kMaxIdx_y].shape_[0], in_data[roialign::kBox].shape_[0]);
@@ -70,7 +71,7 @@ class ROIAlignOp : public Operator {
     CHECK_EQ(bbox.CheckContiguous(), true);
     CHECK_EQ(out.CheckContiguous(), true);
     CHECK_EQ(max_idx_x.CheckContiguous(), true);
-    CHECK_EQ(max_idx_y.CheckContiguous(), true)
+    CHECK_EQ(max_idx_y.CheckContiguous(), true);
     out = -FLT_MAX;
     max_idx_x = -1.0f;
     max_idx_y = -1.0f;
@@ -176,6 +177,8 @@ class ROIAlignProp : public OperatorProperty {
          Shape4(bshape[0], dshape[1], param_.pooled_size[0], param_.pooled_size[1]));
     out_shape->push_back(
          Shape4(bshape[0], dshape[1], param_.pooled_size[0], param_.pooled_size[1]));
+    out_shape->push_back(
+         Shape4(bshape[0], dshape[1], param_.pooled_size[0], param_.pooled_size[1]));
     return true;
   }
 
@@ -188,6 +191,7 @@ class ROIAlignProp : public OperatorProperty {
     CHECK_NE(dtype, -1) << "Input must have specified type";
 
     out_type->clear();
+    out_type->push_back(dtype);
     out_type->push_back(dtype);
     out_type->push_back(dtype);
     return true;

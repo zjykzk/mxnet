@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <vector>
 
+const int kMaxGridDim = 65535;
+
 namespace mshadow {
 namespace cuda {
 
@@ -62,10 +64,10 @@ __global__ void ROIAlignForwardKernel(const int count, const Dtype* bottom_data,
     Dtype wend = static_cast<Dtype>(pw + 1) * bin_size_w;
 
     // Add roi offsets and clip to input boundaries
-    hstart = min(max(hstart + roi_start_h, 0.), static_cast<float>(height));
-    hend = min(max(hend + roi_start_h, 0.), static_cast<float>(height));
-    wstart = min(max(wstart + roi_start_w, 0.), static_cast<float>(width));
-    wend = min(max(wend + roi_start_w, 0.), static_cast<float>(width));
+    hstart = min(max(hstart + roi_start_h, 0.), static_cast<Dtype>(height));
+    hend = min(max(hend + roi_start_h, 0.), static_cast<Dtype>(height));
+    wstart = min(max(wstart + roi_start_w, 0.), static_cast<Dtype>(width));
+    wend = min(max(wend + roi_start_w, 0.), static_cast<Dtype>(width));
     bool is_empty = (hend <= hstart) || (wend <= wstart);
 
     // Define an empty pooling region to be zero
@@ -74,8 +76,8 @@ __global__ void ROIAlignForwardKernel(const int count, const Dtype* bottom_data,
     Dtype maxidx_x = -1;
     Dtype maxidx_y = -1;
     bottom_data += (roi_batch_ind * channels + c) * height * width;
-    for (Dtype h = hstart; h < hend; h +=1.) {
-      for (Dtype w = wstart; w < wend; w +=1.) {
+    for (Dtype h = hstart; h < hend; h += 1.) {
+      for (Dtype w = wstart; w < wend; w += 1.) {
         // Selecting four regular locations for bilinear interpolation
         int x_left = floor(w);
         int x_right = ceil(w);
