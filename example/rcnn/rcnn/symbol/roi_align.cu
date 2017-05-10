@@ -232,16 +232,16 @@ __global__ void ROIAlignBackwardAccKernel(const int count, const Dtype* top_diff
           // if (w,h) is 1 location of the 4 bilinear locations， it can get gradient
           if (x_left == w && y_top == h)
             gradient += (1 - max_x + x_right) * (1 - y_bottom + max_y)
-                * offset_top_diff[pooled_index];
+                * offset_top_diff[index];
           else if (x_left == w && y_bottom == h)
             gradient += (1 - max_x + x_right) * (1 - max_y + y_top)
-                * offset_top_diff[pooled_index];
+                * offset_top_diff[index];
           else if (x_right == w && y_top == h)
             gradient += (1 - x_left + max_x) * (1 - y_bottom + max_y)
-                * offset_top_diff[pooled_index];
+                * offset_top_diff[index];
           else if (x_right == w && y_bottom == h)
-            gradient += (1 - x_leftt + max_x) * (1 - max_y + y_top)
-                * offset_top_diff[pooled_index];
+            gradient += (1 - x_left + max_x) * (1 - max_y + y_top)
+                * offset_top_diff[index];
           gradient /= (x_right - x_left + 2) * (y_top - y_bottom + 2);
 
         }

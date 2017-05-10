@@ -238,7 +238,7 @@ inline void ROIAlignBackwardAcc(const Tensor<cpu, 4, Dtype> &in_grad,
                   gradient += (1 - x_left + max_x) * (1 - y_bottom + max_y)
                       * offset_top_diff[pooled_index];
                 else if (x_right == w && y_bottom == h)
-                  gradient += (1 - x_leftt + max_x) * (1 - max_y + y_top)
+                  gradient += (1 - x_left + max_x) * (1 - max_y + y_top)
                       * offset_top_diff[pooled_index];
                 gradient /= (x_right - x_left + 2) * (y_top - y_bottom + 2);
               }
