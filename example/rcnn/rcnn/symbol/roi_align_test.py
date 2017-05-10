@@ -26,11 +26,16 @@ rois_ = mx.nd.array([[0,0,0,4,4]])
 
 ex = operator.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_})
 ex.forward()
-print 'ROIAlign:\ninput feature map = \n%s \ninput rois = \n%s \n number of outputs = %d\nthe first output = \n%s' % (
+print 'ROIAlign-CPU:\ninput feature map = \n%s \ninput rois = \n%s \n number of outputs = %d\nthe first output = \n%s' % (
            feat_map.asnumpy(), rois_.asnumpy(), len(ex.outputs), ex.outputs[0].asnumpy())
 
-operator2 = mx.symbol.ROIPooling(data=data, rois=rois, pooled_size=(2,2),spatial_scale=1.0)
-ex2 = operator2.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_})
+ex2 = operator.bind(ctx=mx.gpu(0), args={'data' : feat_map.as_in_context(mx.gpu(0)), 'rois' : rois_.as_in_context(mx.gpu(0))})
 ex2.forward()
+print 'ROIAlign-GPU:\nnumber of outputs = %d\nthe first output = \n%s' % (
+           len(ex2.outputs), ex2.outputs[0].asnumpy())
+
+operator_roipool = mx.symbol.ROIPooling(data=data, rois=rois, pooled_size=(2,2),spatial_scale=1.0)
+ex_roipool = operator_roipool.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_})
+ex_roipool.forward()
 print 'ROIPooling:\nnumber of outputs = %d\nthe first output = \n%s' % (
-           len(ex.outputs), ex.outputs[0].asnumpy())
+           len(ex_roipool.outputs), ex_roipool.outputs[0].asnumpy())
