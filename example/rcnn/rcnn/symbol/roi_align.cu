@@ -102,14 +102,13 @@ __global__ void ROIAlignForwardKernel(const int count, const Dtype* bottom_data,
         //do bilinear interpolation
         Dtype val = 0;
         if (is_top_left_in)
-          val += (1 + x_right - w) * (1 - y_bottom + h) * bottom_data[top_left_index];
+          val += (1 - w + x_left) * (h - y_bottom) * bottom_data[top_left_index];
         if (is_top_right_in)
-          val += (1 - x_left + w) * (1 - y_bottom + h) * bottom_data[top_right_index];
+          val += (w - x_left) * (h - y_bottom) * bottom_data[top_right_index];
         if (is_bottom_left_in)
-          val += (1 + x_right - w) * (1 - h + y_top) * bottom_data[bottom_left_index];
+          val += (1 - w + x_left) * (1 - h + y_bottom) * bottom_data[bottom_left_index];
         if (is_bottom_right_in)
-          val += (1 - x_left + w) * (1 - h + y_top) * bottom_data[bottom_right_index];
-        val /= (x_right - x_left + 2) * (y_top - y_bottom + 2);
+          val += (w - x_left) * (1 - h + y_bottom) * bottom_data[bottom_right_index];
 
         if (val > maxval){
           maxval = val;
@@ -231,19 +230,17 @@ __global__ void ROIAlignBackwardAccKernel(const int count, const Dtype* top_diff
 
           // if (w,h) is 1 location of the 4 bilinear locations， it can get gradient
           if (x_left == w && y_top == h)
-            gradient += (1 - max_x + x_right) * (1 - y_bottom + max_y)
+            gradient += (1 - max_x + x_left) * (1 + max_y - y_top)
                 * offset_top_diff[index];
           else if (x_left == w && y_bottom == h)
-            gradient += (1 - max_x + x_right) * (1 - max_y + y_top)
+            gradient += (1 - max_x + x_left) * (1 - max_y + y_bottom)
                 * offset_top_diff[index];
           else if (x_right == w && y_top == h)
-            gradient += (1 - x_left + max_x) * (1 - y_bottom + max_y)
+            gradient += (max_x - x_left) * (1 + max_y - y_top)
                 * offset_top_diff[index];
           else if (x_right == w && y_bottom == h)
-            gradient += (1 - x_left + max_x) * (1 - max_y + y_top)
+            gradient += (max_x - x_left) * (1 - max_y + y_bottom)
                 * offset_top_diff[index];
-          gradient /= (x_right - x_left + 2) * (y_top - y_bottom + 2);
-
         }
       }
     }

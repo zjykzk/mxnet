@@ -24,18 +24,31 @@ feat_map = mx.nd.array([[[[  0.,   1.,   2.,   3.,   4.,   5.],
 
 rois_ = mx.nd.array([[0,0,0,4,4]])
 
-ex = operator.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_})
+top_grad = mx.nd.empty([1,1,8,6])
+top_grad_gpu = mx.nd.empty([1,1,8,6]).as_in_context(mx.gpu(0))
+
+# ROIAlign CPU Test
+ex = operator.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_}, args_grad={'data' : top_grad}, grad_req='write')
 ex.forward()
-print 'ROIAlign-CPU:\ninput feature map = \n%s \ninput rois = \n%s \n number of outputs = %d\nthe first output = \n%s' % (
-           feat_map.asnumpy(), rois_.asnumpy(), len(ex.outputs), ex.outputs[0].asnumpy())
+ex.backward(out_grads=[mx.nd.ones([1,1,2,2])])
+print 'ROIAlign-CPU:\ninput feature map = \n%s \ninput rois = \n%s \n number of outputs = %d\nthe first output = \n%s\ngrad:\n%s' % (
+           feat_map.asnumpy(), rois_.asnumpy(), len(ex.outputs), ex.outputs[0].asnumpy(), top_grad.asnumpy())
 
-ex2 = operator.bind(ctx=mx.gpu(0), args={'data' : feat_map.as_in_context(mx.gpu(0)), 'rois' : rois_.as_in_context(mx.gpu(0))})
+# ROIAlign GPU Test
+operator2 = mx.symbol.ROIAlign(data=data, rois=rois, pooled_size=(2,2),spatial_scale=1.0)
+ex2 = operator2.bind(ctx=mx.gpu(0), args={'data' : feat_map.as_in_context(mx.gpu(0)), 'rois' : rois_.as_in_context(mx.gpu(0))}, \
+                    args_grad={'data': top_grad_gpu}, grad_req='write')
 ex2.forward()
-print 'ROIAlign-GPU:\nnumber of outputs = %d\nthe first output = \n%s' % (
-           len(ex2.outputs), ex2.outputs[0].asnumpy())
+ex2.backward(out_grads=[mx.nd.ones([1,1,2,2])])
+print 'ROIAlign-GPU:\nnumber of outputs = %d\nthe first output = \n%s\ngrad:\n%s' % (
+           len(ex2.outputs), ex2.outputs[0].asnumpy(),top_grad_gpu.asnumpy())
 
+
+#ROIPooling CPU Test
 operator_roipool = mx.symbol.ROIPooling(data=data, rois=rois, pooled_size=(2,2),spatial_scale=1.0)
-ex_roipool = operator_roipool.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_})
+ex_roipool = operator_roipool.bind(ctx=mx.cpu(), args={'data' : feat_map, 'rois' : rois_}, \
+                                   args_grad={'data': top_grad}, grad_req='write')
 ex_roipool.forward()
-print 'ROIPooling:\nnumber of outputs = %d\nthe first output = \n%s' % (
-           len(ex_roipool.outputs), ex_roipool.outputs[0].asnumpy())
+ex_roipool.backward(out_grads=[mx.nd.ones([1,1,2,2])])
+print 'ROIPooling:\nnumber of outputs = %d\nthe first output = \n%s\ngrad:\n%s' % (
+           len(ex_roipool.outputs), ex_roipool.outputs[0].asnumpy(),  top_grad.asnumpy())

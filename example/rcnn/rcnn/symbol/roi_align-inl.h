@@ -86,9 +86,10 @@ class ROIAlignOp : public Operator {
                         const std::vector<TBlob> &in_grad,
                         const std::vector<TBlob> &aux_args) {
     using namespace mshadow;
-    size_t expected = 2;
-    CHECK_EQ(in_data.size(), expected);
-    CHECK_EQ(out_data.size(), expected);
+    size_t expected_in = 2;
+    size_t expected_out = 3;
+    CHECK_EQ(in_data.size(), expected_in);
+    CHECK_EQ(out_data.size(), expected_out);
     CHECK_EQ(out_grad[roialign::kOut].shape_[0], in_data[roialign::kBox].shape_[0]);
     CHECK_EQ(out_data[roialign::kMaxIdx_x].shape_[0], in_data[roialign::kBox].shape_[0]);
     CHECK_EQ(out_data[roialign::kMaxIdx_y].shape_[0], in_data[roialign::kBox].shape_[0]);
