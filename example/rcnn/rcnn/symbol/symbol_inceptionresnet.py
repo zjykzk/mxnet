@@ -10,10 +10,10 @@ import proposal
 import proposal_target
 from rcnn.config import config
 
-eps = 2e-5
+eps = 0.001
 use_global_stats = True
 
-
+#mx.symbol.softmax()
 def ConvFactory(data, num_filter, kernel, stride=(1, 1), pad=(0, 0), act_type="relu", mirror_attr={}, with_act=True,name="",no_bias=True):
     """
     convFactory  contains the conv layer , batchnormal and relu 
@@ -121,17 +121,17 @@ def repeat(inputs, repetitions, layer,name, *args, **kwargs):
 
 def get_inceptionresnet_conv(data):
     # inceptionresnet 1
-    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3),pad=(2,2), stride=(2, 2),name = "conv1_3x3_s2")  #[ ,32,149,149]
+    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3),pad=(1,1), stride=(2, 2),name = "conv1_3x3_s2")  #[ ,32,149,149]
     # inceptionresnet 2
     conv2a_3_3 = ConvFactory(incption_1, 32, (3, 3), pad=(1, 1),name="conv2_3x3_s1") # reduce the size -1
     conv2b_3_3 = ConvFactory(conv2a_3_3, 64, (3, 3), pad=(1, 1),name="conv3_3x3_s1")
     incption_2 = mx.symbol.Pooling(
-        data=conv2b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max') # [*,64,73,73]
+        data=conv2b_3_3, kernel=(3, 3), stride=(2, 2),pad=(1,1),pool_type='max') # [*,64,73,73]
     # inceptionresnet 3
     conv3a_1_1 = ConvFactory(incption_2, 80, (1, 1),name="conv4_3x3_reduce")
     conv3b_3_3 = ConvFactory(conv3a_1_1, 192, (3, 3),pad=(1,1),name="conv4_3x3")
     incption_3 = mx.symbol.Pooling(
-        data=conv3b_3_3, kernel=(3, 3), stride=(2, 2),pad=(2,2), pool_type='max')  # [*,192,35,35]
+        data=conv3b_3_3, kernel=(3, 3), stride=(2, 2),pad=(1,1), pool_type='max')  # [*,192,35,35]
     # inceptionresnet 4
     tower_conv = ConvFactory(incption_3, 96, (1, 1),name="conv5_1x1")
     tower_conv1_0 = ConvFactory(incption_3, 48, (1, 1),name= "conv5_5x5_reduce")
@@ -149,14 +149,16 @@ def get_inceptionresnet_conv(data):
         ## resnet begin
     res_out_4 = repeat(stem_inception_4, 10, block35, scale=0.17, input_num_channels=320,name="inception_resnet_v2_a{0}")
         #upscale and pooling
-    tower_conv = ConvFactory(res_out_4, 384, (3, 3), stride=(2, 2),name="reduction_a_3x3")
+    tower_conv = ConvFactory(res_out_4, 384, (3, 3), stride=(2, 2),pad=(1,1),name="reduction_a_3x3")
     tower_conv1_0 = ConvFactory(res_out_4, 256, (1, 1),name="reduction_a_3x3_2_reduce")
     tower_conv1_1 = ConvFactory(tower_conv1_0, 256, (3, 3), pad=(1, 1),name="reduction_a_3x3_2")
-    tower_conv1_2 = ConvFactory(tower_conv1_1, 384, (3, 3), stride=(2, 2),name="reduction_a_3x3_3")
+    tower_conv1_2 = ConvFactory(tower_conv1_1, 384, (3, 3), pad=(1, 1),stride=(2, 2),name="reduction_a_3x3_3")
     tower_pool = mx.symbol.Pooling(res_out_4, kernel=(
-        3, 3), stride=(2, 2), pool_type='max')
+        3, 3), stride=(2, 2),pad=(1,1),pool_type='max')
     incption_4 = mx.symbol.Concat(*[tower_conv, tower_conv1_2, tower_pool]) # [*,1088,17,17]
-    return incption_4
+    #inception_4 = incption_4
+    inception_4 = repeat(incption_4, 20, block17, scale=0.1, input_num_channels=1088,name="inception_resnet_v2_b{0}")
+    return inception_4
 
 
 def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS):
@@ -225,7 +227,7 @@ def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config
         name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(17, 17), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     #inception 5
-    net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088,name="inception_resnet_v2_b{0}")
+    net = roi_pool
     tower_conv = ConvFactory(net, 256, (1, 1),name="reduction_b_3x3_reduce")
     tower_conv0_1 = ConvFactory(tower_conv, 384, (3, 3), stride=(2, 2),name="reduction_b_3x3")
     tower_conv1 = ConvFactory(net, 256, (1, 1),name="reduction_b_3x3_2_reduce")
@@ -244,7 +246,7 @@ def get_inceptionresnet_train(num_classes=config.NUM_CLASSES, num_anchors=config
     net = ConvFactory(net, 1536, (1, 1),name="conv6_1x1")
     pool1 = mx.symbol.Pooling(net, kernel=(
         8, 8), global_pool=True, pool_type='avg')
-   # pool1 = mx.symbol.Flatten(net)
+    pool1 = mx.symbol.Flatten(pool1)
     pool1 = mx.symbol.Dropout(data=pool1, p=0.2)
    # pool1 = mx.symbol.FullyConnected(data=pool1, num_hidden=num_classes)
 
@@ -274,7 +276,7 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
 
     # RPN
     rpn_conv = mx.symbol.Convolution(
-        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
+        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=1280, name="rpn_conv_3x3")
     rpn_relu = mx.symbol.Activation(data=rpn_conv, act_type="relu", name="rpn_relu")
     rpn_cls_score = mx.symbol.Convolution(
         data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=2 * num_anchors, name="rpn_cls_score")
@@ -289,7 +291,7 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
     rpn_cls_prob_reshape = mx.symbol.Reshape(
         data=rpn_cls_prob, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_prob_reshape')
     if config.TEST.CXX_PROPOSAL:
-        rois = mx.contrib.symbol.Proposal(
+        rois = mx.symbol.Proposal(
             cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
             feature_stride=config.RPN_FEAT_STRIDE, scales=tuple(config.ANCHOR_SCALES), ratios=tuple(config.ANCHOR_RATIOS),
             rpn_pre_nms_top_n=config.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=config.TEST.RPN_POST_NMS_TOP_N,
@@ -307,7 +309,7 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
         name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(17, 17), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     # inception 5
-    net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088, name="inception_resnet_v2_b{%d}")
+    net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088, name="inception_resnet_v2_b{0}")
     tower_conv = ConvFactory(net, 256, (1, 1), name="reduction_b_3x3_reduce")
     tower_conv0_1 = ConvFactory(tower_conv, 384, (3, 3), stride=(2, 2), name="reduction_b_3x3")
     tower_conv1 = ConvFactory(net, 256, (1, 1), name="reduction_b_3x3_2_reduce")
@@ -320,17 +322,17 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
     net = mx.symbol.Concat(
         *[tower_conv0_1, tower_conv1_1, tower_conv2_2, tower_pool])
     # inception 6
-    net = repeat(net, 9, block8, scale=0.2, input_num_channels=2080, name="inception_resnet_v2_c{%d}")
-    net = block8(net, with_act=False, input_num_channels=2080, name="inception_resnet_v2_c10")
+#    net = repeat(net, 9, block8, scale=0.2, input_num_channels=2080, name="inception_resnet_v2_c{0}")
+#    net = block8(net, with_act=False, input_num_channels=2080, name="inception_resnet_v2_c10")
 
     net = ConvFactory(net, 1536, (1, 1), name="conv6_1x1")
     pool1 = mx.symbol.Pooling(net, kernel=(
         8, 8), global_pool=True, pool_type='avg')
-    # pool1 = mx.symbol.Flatten(net)
-    pool1 = mx.symbol.Dropout(data=pool1, p=0.2)
+    pool1 = mx.symbol.Flatten(pool1)
+    #pool1 = mx.symbol.Dropout(data=pool1, p=0.5)
     # classification
     cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
-    cls_prob = mx.symbol.softmax(name='cls_prob', data=cls_score)
+    cls_prob = mx.symbol.SoftmaxOutput(name='cls_prob', data=cls_score)
     # bounding box regression
     bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=pool1, num_hidden=num_classes * 4)
 

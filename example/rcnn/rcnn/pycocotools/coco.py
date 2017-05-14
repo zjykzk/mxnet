@@ -1,8 +1,6 @@
-
 from __future__ import print_function
-
-__author__ = 'tylin'
 __version__ = '1.0.1'
+__author__ = 'tylin'
 # Interface for accessing the Microsoft COCO dataset.
 
 # Microsoft COCO is a large image dataset designed for object detection,
