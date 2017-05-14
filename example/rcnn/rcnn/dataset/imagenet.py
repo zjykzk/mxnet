@@ -249,25 +249,24 @@ class imagenet(IMDB):
         self.write_pascal_results(detections)
         self.do_python_eval()
 
-    def boxvoting(self,detections_list):
-
+    def boxvoting(self, detections_list):
         all_boxes = [[[] for _ in xrange(self.num_images)]
                  for _ in xrange(self.num_classes)]
 
         for cls_ind, cls in enumerate(self.classes):
             if cls == '__background__':
                 continue
-                for im_ind, index in enumerate(self.image_set_index):
-                    dets = []
-                    for i in range(detections_list.shape[0])
-                        dets.append() =
-                    if len(dets) == 0:
-                        continue
+            for im_ind, index in enumerate(self.image_set_index):
+                dets = []
+                for i in range(detections_list.shape[0]):
+#      dets.append() =
+                if len(dets) == 0:
+                    continue
                         # the VOCdevkit expects 1-based indices
-                    for k in range(dets.shape[0]):
-                            f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
-                                    format(index, dets[k, -1],
-                                           dets[k, 0] + 1, dets[k, 1] + 1, dets[k, 2] + 1, dets[k, 3] + 1))
+                for k in range(dets.shape[0]):
+                #           f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
+                    format(index, dets[k, -1],
+                        dets[k, 0] + 1, dets[k, 1] + 1, dets[k, 2] + 1, dets[k, 3] + 1))
 
     def evaluate_detections_merge(self, detections_list):
         """
