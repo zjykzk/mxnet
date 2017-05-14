@@ -197,6 +197,8 @@ def pred_eval(predictor, test_data, imdb, vis=False, thresh=1e-3):
         cPickle.dump(all_boxes, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
     imdb.evaluate_detections(all_boxes)
+    return all_boxes
+
 
 
 def vis_all_detection(im_array, detections, class_names, scale):
