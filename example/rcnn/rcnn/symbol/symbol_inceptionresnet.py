@@ -276,7 +276,7 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
 
     # RPN
     rpn_conv = mx.symbol.Convolution(
-        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=1280, name="rpn_conv_3x3")
+        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
     rpn_relu = mx.symbol.Activation(data=rpn_conv, act_type="relu", name="rpn_relu")
     rpn_cls_score = mx.symbol.Convolution(
         data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=2 * num_anchors, name="rpn_cls_score")
@@ -307,9 +307,9 @@ def get_inceptionresnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.
     # Fast R-CNN
     roi_pool = mx.symbol.ROIPooling(
         name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(17, 17), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
-
+    net = roi_pool
     # inception 5
-    net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088, name="inception_resnet_v2_b{0}")
+    # net = repeat(roi_pool, 20, block17, scale=0.1, input_num_channels=1088, name="inception_resnet_v2_b{0}")
     tower_conv = ConvFactory(net, 256, (1, 1), name="reduction_b_3x3_reduce")
     tower_conv0_1 = ConvFactory(tower_conv, 384, (3, 3), stride=(2, 2), name="reduction_b_3x3")
     tower_conv1 = ConvFactory(net, 256, (1, 1), name="reduction_b_3x3_2_reduce")
