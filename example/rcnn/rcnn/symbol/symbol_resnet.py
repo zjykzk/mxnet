@@ -226,7 +226,7 @@ def get_resnet_rpn(num_anchors=config.NUM_ANCHORS):
 
     # RPN
     rpn_conv = mx.symbol.Convolution(
-        data=relu5_3, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
+        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
     rpn_relu = mx.symbol.Activation(data=rpn_conv, act_type="relu", name="rpn_relu")
     rpn_cls_score = mx.symbol.Convolution(
         data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=2 * num_anchors, name="rpn_cls_score")
@@ -262,7 +262,7 @@ def get_resnet_rpn_test(num_anchors=config.NUM_ANCHORS):
 
     # RPN
     rpn_conv = mx.symbol.Convolution(
-        data=relu5_3, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
+        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
     rpn_relu = mx.symbol.Activation(data=rpn_conv, act_type="relu", name="rpn_relu")
     rpn_cls_score = mx.symbol.Convolution(
         data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=2 * num_anchors, name="rpn_cls_score")
@@ -292,4 +292,89 @@ def get_resnet_rpn_test(num_anchors=config.NUM_ANCHORS):
     # rois = group[0]
     # score = group[1]
 
+    return group
+
+def get_resnet_rcnn(num_classes=config.NUM_CLASSES):
+    """
+    Fast R-CNN with VGG 16 conv layers
+    :param num_classes: used to determine output size
+    :return: Symbol
+    """
+    data = mx.symbol.Variable(name="data")
+    rois = mx.symbol.Variable(name='rois')
+    label = mx.symbol.Variable(name='label')
+    bbox_target = mx.symbol.Variable(name='bbox_target')
+    bbox_weight = mx.symbol.Variable(name='bbox_weight')
+
+    # reshape input
+    rois = mx.symbol.Reshape(data=rois, shape=(-1, 5), name='rois_reshape')
+    label = mx.symbol.Reshape(data=label, shape=(-1, ), name='label_reshape')
+    bbox_target = mx.symbol.Reshape(data=bbox_target, shape=(-1, 4 * num_classes), name='bbox_target_reshape')
+    bbox_weight = mx.symbol.Reshape(data=bbox_weight, shape=(-1, 4 * num_classes), name='bbox_weight_reshape')
+
+    conv_feat = get_resnet_conv(data)
+    # Fast R-CNN
+    roi_pool = mx.symbol.ROIPooling(
+        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+
+    # res5
+    unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
+    for i in range(2, units[3] + 1):
+        unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i)
+    bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+    relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+
+    # classification
+    cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
+    cls_prob = mx.symbol.softmax(name='cls_prob', data=cls_score)
+    # bounding box regression
+    bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=pool1, num_hidden=num_classes * 4)
+
+    # reshape output
+    cls_prob = mx.symbol.Reshape(data=cls_prob, shape=(config.TEST.BATCH_IMAGES, -1, num_classes), name='cls_prob_reshape')
+    bbox_pred = mx.symbol.Reshape(data=bbox_pred, shape=(config.TEST.BATCH_IMAGES, -1, 4 * num_classes), name='bbox_pred_reshape')
+
+    # group output
+    group = mx.symbol.Group([rois, cls_prob, bbox_pred])
+    return group
+
+def get_resnet_rcnn_test(num_classes=config.NUM_CLASSES):
+    """
+    Fast R-CNN Network with VGG
+    :param num_classes: used to determine output size
+    :return: Symbol
+    """
+    data = mx.symbol.Variable(name="data")
+    rois = mx.symbol.Variable(name='rois')
+
+    # reshape rois
+    rois = mx.symbol.Reshape(data=rois, shape=(-1, 5), name='rois_reshape')
+
+    conv_feat = get_resnet_conv(data)
+
+    # Fast R-CNN
+    roi_pool = mx.symbol.ROIPooling(
+        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+
+    # res5
+    unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
+    for i in range(2, units[3] + 1):
+        unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i)
+    bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+    relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+
+    # classification
+    cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
+    cls_prob = mx.symbol.softmax(name='cls_prob', data=cls_score)
+    # bounding box regression
+    bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=pool1, num_hidden=num_classes * 4)
+
+    # reshape output
+    cls_prob = mx.symbol.Reshape(data=cls_prob, shape=(config.TEST.BATCH_IMAGES, -1, num_classes), name='cls_prob_reshape')
+    bbox_pred = mx.symbol.Reshape(data=bbox_pred, shape=(config.TEST.BATCH_IMAGES, -1, 4 * num_classes), name='bbox_pred_reshape')
+
+    # group output
+    group = mx.symbol.Group([rois, cls_prob, bbox_pred])
     return group
