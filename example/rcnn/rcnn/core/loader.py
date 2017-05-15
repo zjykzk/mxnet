@@ -194,7 +194,7 @@ class ROIIter(mx.io.DataIter):
             "Invalid settings for work load. "
         slices = _split_input_slice(self.batch_size, work_load_list)
 
-        # get each device
+        # get date for each device
         data_list = []
         label_list = []
         for islice in slices:
@@ -349,6 +349,7 @@ class AnchorLoader(mx.io.DataIter):
         slices = _split_input_slice(self.batch_size, work_load_list)
 
         # get testing data for multigpu
+        # each element in the list is the data used by different gpu
         data_list = []
         label_list = []
         for islice in slices:
@@ -362,6 +363,7 @@ class AnchorLoader(mx.io.DataIter):
         for data, data_pad in zip(data_list, data_tensor):
             data['data'] = data_pad[np.newaxis, :]
 
+        # generate new label data
         new_label_list = []
         for data, label in zip(data_list, label_list):
             # infer label shape
