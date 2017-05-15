@@ -40,12 +40,10 @@ def main():
     cc = CrayonClient(hostname='10.132.90.242')
     if args.exp_name is None:
         args.exp_name = datetime.now().strftime('frcnnEval_%m-%d')
-	try:
-	   exp = cc.create_experiment(args.exp_name)
-        except:
-           exp = cc.open_experiment(args.exp_name)
-    else:
-	exp = cc.open_experiment(args.exp_name)
+    try:
+	exp = cc.create_experiment(args.exp_name)
+    except:
+        exp = cc.open_experiment(args.exp_name)
 
     for x in args.epoch.split(","):	
 	mAp = test_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
