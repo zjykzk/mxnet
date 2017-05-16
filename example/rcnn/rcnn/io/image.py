@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import os
 import random
+from PIL import Image, ImageEnhance
 from ..config import config
 
 
@@ -25,6 +26,8 @@ def get_image(roidb):
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
         new_rec = roi_rec.copy()
+        #if roidb[i]['image_transform']:
+        im, new_rec = img_transform(im, new_rec)
         scale_ind = random.randrange(len(config.SCALES))
         target_size = config.SCALES[scale_ind][0]
         max_size = config.SCALES[scale_ind][1]
@@ -36,6 +39,31 @@ def get_image(roidb):
         new_rec['im_info'] = im_info
         processed_roidb.append(new_rec)
     return processed_ims, processed_roidb
+
+def img_transform(im, roidb):
+    # convert cv2 image to PIL image
+    PIL_image = Image.fromarray(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
+    # sample a type of image enhancement to implement
+    color_transform_rand = random.random()
+    if color_transform_rand < 0.25:
+        # change contrast
+        img_enhancement = ImageEnhance.Contrast(PIL_image)
+    elif color_transform_rand < 0.5:
+        # change brightness
+        img_enhancement = ImageEnhance.Brightness(PIL_image)
+    elif color_transform_rand < 0.75:
+        # change color
+        img_enhancement = ImageEnhance.Color(PIL_image)
+    else:
+        # change sharpness
+        img_enhancement = ImageEnhance.Sharpness(PIL_image)
+
+    enhance_factor = random.uniform(0.5, 1.5)
+    new_image = img_enhancement.enhance(enhance_factor)
+    #convert PIL image back to cv2 image
+    cv2_image = cv2.cvtColor(np.array(new_image), cv2.COLOR_RGB2BGR)
+
+    return cv2_image, roidb
 
 
 def resize(im, target_size, max_size, stride=0):
