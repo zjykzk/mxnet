@@ -136,6 +136,8 @@ network.resnet.RCNN_FEAT_STRIDE = 16
 network.resnet.FIXED_PARAMS = ['conv0', 'stage1', 'gamma', 'beta']
 network.resnet.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'gamma', 'beta']
 
+network.resnet_fpn = edict()
+
 # dataset settings
 dataset = edict()
 
@@ -158,6 +160,8 @@ dataset.imagenet.root_path = 'data'
 dataset.imagenet.dataset_path = 'data/imagenet'
 dataset.imagenet.NUM_CLASSES = 201
 
+dataset.imagenet_loc_2017 = edict()
+dataset.imagenet_loc_val_2017 = edict()
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():

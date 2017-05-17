@@ -13,5 +13,7 @@ nohup python -m rcnn.tools.train_rpn --network resnet                       \
                                   --root_path /disk2/data/imagenet_loc_2017 \
                                   --dataset_path ILSVRC                     \
                                   --prefix model/imagenet_loc_2017          \
-                                  --gpu 0,1                                 \
+                                  --begin_epoch 3                           \
+                                  --resume				    \
+                                  --gpu 0,1,2,3                             \
                                   >${LOG} 2>&1 &
