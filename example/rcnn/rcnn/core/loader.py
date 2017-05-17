@@ -215,6 +215,24 @@ class ROIIter(mx.io.DataIter):
         self.label = [mx.nd.array(all_label[name]) for name in self.label_name]
 
 
+class FPNAnchorLoader(mx.io.DataIter):
+    def __init__(self, feat_syms, roidb, batch_size=1, shuffle=False, ctx=None, work_load_list=None,
+                 feat_stride=16, anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2), allowed_border=0,
+                 aspect_grouping=False):
+        super(FPNAnchorLoader, self).__init__(feat_syms, roidb, batch_size, shuffle, ctx, work_load_list,
+            feat_stride=16, anchor_scales, anchor_ratios, allowed_border, aspect_grouping)
+
+    def _assign_anchor(self, data_shape, gt_boxes, im_info):
+        anchors = []
+        for fs in self.feat_sym:
+            _, feat_shape, _ = fs.infer_shape(**data_shape)
+            feat_shape = [int(i) for i in feat_shape[0]]
+        anchors.append(assign_anchor(feat_shape, gt_boxes, im_info,
+             self.feat_stride, self.anchor_scales, self.anchor_ratios, self.allowed_border))
+
+        return anchors
+
+
 class AnchorLoader(mx.io.DataIter):
     def __init__(self, feat_sym, roidb, batch_size=1, shuffle=False, ctx=None, work_load_list=None,
                  feat_stride=16, anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2), allowed_border=0,
@@ -357,7 +375,7 @@ class AnchorLoader(mx.io.DataIter):
             data, label = get_rpn_batch(iroidb)
             data_list.append(data)
             label_list.append(label)
-
+	
         # pad data first and then assign anchor (read label)
         data_tensor = tensor_vstack([batch['data'] for batch in data_list])
         for data, data_pad in zip(data_list, data_tensor):
@@ -369,17 +387,11 @@ class AnchorLoader(mx.io.DataIter):
             # infer label shape
             data_shape = {k: v.shape for k, v in data.items()}
             del data_shape['im_info']
-            _, feat_shape, _ = self.feat_sym.infer_shape(**data_shape)
-            feat_shape = [int(i) for i in feat_shape[0]]
+            # assign anchor for label
+            new_label_list.append(_assign_anchor(data_shape, label['gt_boxes'], data['im_info']))
 
             # add gt_boxes to data for e2e
             data['gt_boxes'] = label['gt_boxes'][np.newaxis, :, :]
-
-            # assign anchor for label
-            label = assign_anchor(feat_shape, label['gt_boxes'], data['im_info'],
-                                  self.feat_stride, self.anchor_scales,
-                                  self.anchor_ratios, self.allowed_border)
-            new_label_list.append(label)
 
         all_data = dict()
         for key in self.data_name:
@@ -392,3 +404,9 @@ class AnchorLoader(mx.io.DataIter):
 
         self.data = [mx.nd.array(all_data[key]) for key in self.data_name]
         self.label = [mx.nd.array(all_label[key]) for key in self.label_name]
+
+    def _assign_anchor(self, data_shape, gt_boxes, im_info):
+        _, feat_shape, _ = self.feat_sym.infer_shape(**data_shape)
+        feat_shape = [int(i) for i in feat_shape[0]]
+        return assign_anchor(feat_shape, gt_boxes, im_info,
+             self.feat_stride, self.anchor_scales, self.anchor_ratios, self.allowed_border)
