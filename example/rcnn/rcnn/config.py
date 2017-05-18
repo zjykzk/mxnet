@@ -161,7 +161,10 @@ dataset.imagenet.dataset_path = 'data/imagenet'
 dataset.imagenet.NUM_CLASSES = 201
 
 dataset.imagenet_loc_2017 = edict()
+dataset.imagenet_loc_2017.NUM_CLASSES = 1001
+
 dataset.imagenet_loc_val_2017 = edict()
+dataset.imagenet_loc_val_2017.NUM_CLASSES = 1001
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():
