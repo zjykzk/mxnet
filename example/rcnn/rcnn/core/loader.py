@@ -366,7 +366,7 @@ class AnchorLoader(mx.io.DataIter):
             "Invalid settings for work load. "
         slices = _split_input_slice(self.batch_size, work_load_list)
 
-        # get testing data for multigpu
+        # get testing data for each gpu
         # each element in the list is the data used by different gpu
         data_list = []
         label_list = []
