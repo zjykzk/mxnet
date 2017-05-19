@@ -170,8 +170,6 @@ network.inceptionv3.RCNN_FEAT_STRIDE = 16
 network.inceptionv3.FIXED_PARAMS = ['conv','conv_1', 'conv_2',"conv_3"]
 network.inceptionv3.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta']
 
->>>>>>> ataraxialab/master
-
 # dataset settings
 dataset = edict()
 
