@@ -104,7 +104,7 @@ default.root_path = 'data'
 default.dataset_path = 'data/VOCdevkit'
 # default training
 default.frequent = 20
-default.kvstore = 'device'
+default.kvstore = 'local'
 # default e2e
 default.e2e_prefix = 'model/e2e'
 default.e2e_epoch = 10
@@ -138,6 +138,40 @@ network.resnet.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'ga
 
 network.resnet_fpn = edict()
 
+network.resnet152 = edict()
+network.resnet152.pretrained = 'model/resnet-152'
+network.resnet152.pretrained_epoch = 0
+network.resnet152.PIXEL_MEANS = np.array([0, 0, 0])
+network.resnet152.IMAGE_STRIDE = 0
+network.resnet152.RPN_FEAT_STRIDE = 16
+network.resnet152.RCNN_FEAT_STRIDE = 16
+network.resnet152.FIXED_PARAMS = ['conv0', 'stage1', 'gamma', 'beta']
+network.resnet152.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'gamma', 'beta']
+
+
+network.inceptionresnet = edict()
+network.inceptionresnet.pretrained = 'model/inceptionresnet'
+network.inceptionresnet.pretrained_epoch = 0
+#network.inceptionresnet.PIXEL_MEANS = np.array([0, 0, 0])
+network.inceptionresnet.IMAGE_STRIDE = 0
+network.inceptionresnet.RPN_FEAT_STRIDE = 16
+network.inceptionresnet.RCNN_FEAT_STRIDE = 16
+network.inceptionresnet.FIXED_PARAMS = ['conv1', 'conv2',"conv3","conv4"]
+network.inceptionresnet.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta']
+
+
+network.inceptionv3 = edict()
+network.inceptionv3.pretrained = 'model/inceptionresnet'
+network.inceptionv3.pretrained_epoch = 0
+#network.inceptionresnet.PIXEL_MEANS = np.array([0, 0, 0])
+network.inceptionv3.IMAGE_STRIDE = 0
+network.inceptionv3.RPN_FEAT_STRIDE = 16
+network.inceptionv3.RCNN_FEAT_STRIDE = 16
+network.inceptionv3.FIXED_PARAMS = ['conv','conv_1', 'conv_2',"conv_3"]
+network.inceptionv3.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta']
+
+>>>>>>> ataraxialab/master
+
 # dataset settings
 dataset = edict()
 
@@ -155,7 +189,7 @@ dataset.coco.NUM_CLASSES = 81
 dataset.imagenet = edict()
 dataset.imagenet.dataset = 'imagenet'
 dataset.imagenet.image_set = 'train'
-dataset.imagenet.test_image_set = 'test.txt'
+dataset.imagenet.test_image_set = 'val'
 dataset.imagenet.root_path = 'data'
 dataset.imagenet.dataset_path = 'data/imagenet'
 dataset.imagenet.NUM_CLASSES = 201
