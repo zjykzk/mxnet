@@ -188,7 +188,10 @@ if __name__ == '__main__':
     with open(cache_file, 'wb') as fid:
         cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)
     '''
-    target = sys.args[1]
+    target = sys.argv[1]
+    if len(sys.argv) > 2:
+        IMAGE_ROOT = sys.argv[2]
+
     if target == 'train':
         clean_train()
     elif target == 'val':
