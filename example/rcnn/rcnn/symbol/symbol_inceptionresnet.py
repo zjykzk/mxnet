@@ -103,12 +103,12 @@ def repeat(inputs, repetitions, layer, *args, **kwargs):
 
 def get_inceptionresnet_conv(data):
     # inceptionresnet 1
-    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3), stride=(2, 2))  # 【*,32,149,149】
+    incption_1 = ConvFactory(data=data, num_filter=32,kernel=(3, 3), stride=(2, 2))  #[*,32,149,1]
     # inceptionresnet 2
     conv2a_3_3 = ConvFactory(incption_1, 32, (3, 3)) # reduce the size -1
     conv2b_3_3 = ConvFactory(conv2a_3_3, 64, (3, 3), pad=(1, 1))
     incption_2 = mx.symbol.Pooling(
-        data=conv2b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max') # [*，64,73,73]
+        data=conv2b_3_3, kernel=(3, 3), stride=(2, 2), pool_type='max') # [*,64,73,73]
     # inceptionresnet 3
     conv3a_1_1 = ConvFactory(incption_2, 80, (1, 1))
     conv3b_3_3 = ConvFactory(conv3a_1_1, 192, (3, 3))

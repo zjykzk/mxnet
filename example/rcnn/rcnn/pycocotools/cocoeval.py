@@ -1,5 +1,3 @@
-__author__ = 'tsungyi'
-
 from __future__ import print_function
 import numpy as np
 import datetime
@@ -7,6 +5,8 @@ import time
 from collections import defaultdict
 import mask
 import copy
+
+__author__ = 'tsungyi'
 
 class COCOeval:
     # Interface for evaluating detection on the Microsoft COCO dataset.

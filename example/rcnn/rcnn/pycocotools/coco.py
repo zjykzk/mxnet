@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'tylin'
 __version__ = '1.0.1'
 # Interface for accessing the Microsoft COCO dataset.
@@ -43,8 +44,6 @@ __version__ = '1.0.1'
 # Data, paper, and tutorials available at:  http://mscoco.org/
 # Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
 # Licensed under the Simplified BSD License [see bsd.txt]
-
-from __future__ import print_function
 import json
 import datetime
 import time

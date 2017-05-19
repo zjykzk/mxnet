@@ -1,5 +1,36 @@
 import mxnet as mx
+import numpy as np
 from rcnn.config import config
+
+class EleSumTopdownAndLateral(mx.operator.CustomOp):
+    def forward(self, is_train, req, in_data, out_data, aux):
+        topdown, lateral = in_data
+        td_shape, la_shape = topdown.shape, lateral.shape
+        if td_shape == la_shape:
+            self.assign(out_data[0], req[0], topdown + lateral)
+            return
+        self.assign(out_data[0], 'write', mx.ndarray.slice(topdown, end=la_shape) + lateral)
+
+    def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
+        pass
+
+@mx.operator.register('elesumtopdownandlateral')
+class EleSumTopdownAndLateralProp(mx.operator.CustomOpProp):
+    def __init__(self):
+        super(EleSumTopdownAndLateralProp, self).__init__(need_top_grad=False)
+
+    def list_arguments(self):
+        return ['topdown', 'lateral']
+
+    def list_outputs(self):
+        return ['output']
+
+    def infer_shape(self, in_shape):
+        td_shape, la_shape = in_shape
+        return [td_shape, la_shape], [la_shape], []
+
+    def create_operator(self, ctx, shapes, dtypes):
+        return EleSumTopdownAndLateral()
 
 eps = 2e-5
 use_global_stats = True
@@ -15,7 +46,7 @@ filter_list = [256, 512, 1024, 2048]
 
 
 def residual_unit(data, num_filter, stride, dim_match, name, wbs={}):
-    bn1 = mx.sym.BatchNorm( data=data, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name=name + '_bn1')
+    bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name=name + '_bn1')
     act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
     if 'conv1' in wbs:
         conv1 = mx.sym.Convolution(data=act1, num_filter=int(num_filter * 0.25),
@@ -67,25 +98,22 @@ def _build_features(features):
     '''Parameter: list of feature from resnet layers'''
 
     c2, c3, c4, c5 = features
-    p5 = mx.sym.Convolution(
-        data=c5, num_filter=256, kernel=(1, 1), name='p5_lateral')
+    p5 = mx.sym.Convolution(data=c5, num_filter=256, kernel=(1, 1), name='p5_lateral')
 
-    topdown = mx.sym.UpSampling(
-        p5, scale=2, name='p4_topdown', sample_type='bilinear')
-    lateral = mx.sym.Convolution(
-        data=c4, num_filter=256, kernel=(1, 1), name='p4_lateral')
-    p4 = mx.sym.Convolution(
-        data=topdown + lateral, num_filter=256, kernel=(3, 3), name='p4_conv')
+    topdown = mx.sym.UpSampling(p5, scale=2, name='p4_topdown', sample_type='bilinear')
+    lateral = mx.sym.Convolution(data=c4, num_filter=256, kernel=(1, 1), name='p4_lateral')
+    es = mx.symbol.Custom(topdown=topdown, lateral=lateral, name='elem-sum-td-la1', op_type='elesumtopdownandlateral')
+    p4 = mx.sym.Convolution(data=es, num_filter=256, kernel=(3, 3), name='p4_conv')
 
-    topdown = mx.sym.UpSampling(
-        p4, scale=2, name='p3_topdown', sample_type='bilinear')
-    lateral = mx.sym.Convolution(
-        data=c3, num_filter=256, kernel=(1, 1), name='p3_lateral')
-    p3 = mx.sym.Convolution(data=topdown + lateral, num_filter=256, kernel=(3, 3), pad=(1, 1), name='p3_conv')
+    topdown = mx.sym.UpSampling(p4, scale=2, name='p3_topdown', sample_type='bilinear')
+    lateral = mx.sym.Convolution(data=c3, num_filter=256, kernel=(1, 1), name='p3_lateral')
+    es = mx.symbol.Custom(topdown=topdown, lateral=lateral, name='elem-sum-td-la2', op_type='elesumtopdownandlateral')
+    p3 = mx.sym.Convolution(data=es, num_filter=256, kernel=(3, 3), pad=(1, 1), name='p3_conv')
 
     topdown = mx.sym.UpSampling(p3, scale=2, name='p2_topdown', sample_type='bilinear')
     lateral = mx.sym.Convolution(data=c2, num_filter=256, kernel=(1, 1), name='p2_lateral')
-    p2 = mx.sym.Convolution(data=topdown + lateral, num_filter=256, kernel=(3, 3), pad=(1, 1), name='p2_conv')
+    es = mx.symbol.Custom(topdown=topdown, lateral=lateral, name='elem-sum-td-la3', op_type='elesumtopdownandlateral')
+    p2 = mx.sym.Convolution(data=es, num_filter=256, kernel=(3, 3), pad=(1, 1), name='p2_conv')
 
     return p2, p3, p4, p5
 
@@ -131,9 +159,6 @@ def get_resnet_fpn_train(num_classes=config.NUM_CLASSES,
     data = mx.symbol.Variable(name="data")
     im_info = mx.symbol.Variable(name="im_info")
     gt_boxes = mx.symbol.Variable(name="gt_boxes")
-    rpn_label = mx.symbol.Variable(name='label')
-    rpn_bbox_target = mx.symbol.Variable(name='bbox_target')
-    rpn_bbox_weight = mx.symbol.Variable(name='bbox_weight')
 
     scales = (2, 4, 8, 16)
     rpn_cls_probes, rpn_bbox_losses, cls_probes, bbox_losses, labels = [], [], [], [], []
@@ -160,7 +185,10 @@ def get_resnet_fpn_train(num_classes=config.NUM_CLASSES,
         residua_unit5_weight[name+'sc'] = {'weight':_v(name=name+'_sc_weight')}
 
     # shared convolutional layers
-    for i, conv_feat in enumerate(get_resnet_fpn_conv(data)):
+    for i, conv_feat in enumerate(get_resnet_fpn_conv(data)[:]):
+        rpn_label = mx.symbol.Variable(name='label%d'%i)
+        rpn_bbox_target = mx.symbol.Variable(name='bbox_target%d'%i)
+        rpn_bbox_weight = mx.symbol.Variable(name='bbox_weight%d'%i)
         # RPN layers
         rpn_conv = mx.symbol.Convolution(data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, weight=rpn_conv_weight, bias=rpn_conv_bias, name="rpn_conv_3x3_%d" % i)
         rpn_relu = mx.symbol.Activation(data=rpn_conv, act_type="relu", name="rpn_relu_%d" % i)
@@ -171,7 +199,7 @@ def get_resnet_fpn_train(num_classes=config.NUM_CLASSES,
         rpn_cls_score_reshape = mx.symbol.Reshape(data=rpn_cls_score, shape=(0, 2, -1, 0), name="rpn_cls_score_reshape_%d" % i)
 
         # classification
-        rpn_cls_prob = mx.symbol.SoftmaxOutput(data=rpn_cls_score_reshape, label=rpn_label[i], multi_output=True, normalization='valid', use_ignore=True, ignore_label=-1, name="rpn_cls_prob_%d" % i)
+        rpn_cls_prob = mx.symbol.SoftmaxOutput(data=rpn_cls_score_reshape, label=rpn_label, multi_output=True, normalization='valid', use_ignore=True, ignore_label=-1, name="rpn_cls_prob_%d" % i)
         # bounding box regression
         rpn_bbox_loss_ = rpn_bbox_weight * mx.symbol.smooth_l1(name='rpn_bbox_loss_%d' % i, scalar=3.0, data=(rpn_bbox_pred - rpn_bbox_target))
         rpn_bbox_loss = mx.sym.MakeLoss(name='rpn_bbox_loss_%d' % i, data=rpn_bbox_loss_, grad_scale=1.0 / config.TRAIN.RPN_BATCH_SIZE)
@@ -197,26 +225,29 @@ def get_resnet_fpn_train(num_classes=config.NUM_CLASSES,
             data=gt_boxes, shape=(-1, 5), name='gt_boxes_reshape_%d' % i)
         group = mx.symbol.Custom(rois=rois, gt_boxes=gt_boxes_reshape, op_type='proposal_target', num_classes=num_classes,
             batch_images=config.TRAIN.BATCH_IMAGES, batch_rois=config.TRAIN.BATCH_ROIS, fg_fraction=config.TRAIN.FG_FRACTION)
-        rois, label, bbox_target, bbox_weight = group[:4]
+        rois = group[0]
+        label = group[1]
+        bbox_target = group[2]
+        bbox_weight = group[3]
 
         # Fast R-CNN
         roi_pool = mx.symbol.ROIPooling(name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
         # res5
-        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1', wbs=residua_unit5_weight)
-        for i in range(2, units[3] + 1):
-            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i, wbs=residua_unit5_weight)
+        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage5_unit1_%d' % i, wbs=residua_unit5_weight)
+        for j in range(2, units[3] + 1):
+            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage5_unit%d_%d' % (j, i), wbs=residua_unit5_weight)
 
-        bn1 = mx.sym.BatchNorm(data=roi_pool, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1_%d'%i)
         relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
-        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1_%d'%i)
 
         # classification
-        cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes, weight=cls_score_weight, bias=cls_score_bias)
-        cls_prob = mx.symbol.SoftmaxOutput(name='cls_prob', data=cls_score, label=label, normalization='batch')
+        cls_score = mx.symbol.FullyConnected(name='cls_score%d' % i, data=pool1, num_hidden=num_classes, weight=cls_score_weight, bias=cls_score_bias)
+        cls_prob = mx.symbol.SoftmaxOutput(name='cls_prob_%d'%i, data=cls_score, label=label, normalization='batch')
         # bounding box regression
-        bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=pool1, num_hidden=num_classes * 4, weight=bbox_pred_weight, bias=bbox_pred_bias)
-        bbox_loss_ = bbox_weight * mx.symbol.smooth_l1(name='bbox_loss_', scalar=1.0, data=(bbox_pred - bbox_target))
-        bbox_loss = mx.sym.MakeLoss(name='bbox_loss', data=bbox_loss_, grad_scale=1.0 / config.TRAIN.BATCH_ROIS)
+        bbox_pred = mx.symbol.FullyConnected(name='bbox_pred%d' % i, data=pool1, num_hidden=num_classes * 4, weight=bbox_pred_weight, bias=bbox_pred_bias)
+        bbox_loss_ = bbox_weight * mx.symbol.smooth_l1(name='bbox_loss_%d'%i, scalar=1.0, data=(bbox_pred - bbox_target))
+        bbox_loss = mx.sym.MakeLoss(name='bbox_loss_%d'%i, data=bbox_loss_, grad_scale=1.0 / config.TRAIN.BATCH_ROIS)
 
         # reshape output
         label = mx.symbol.Reshape(data=label, shape=(config.TRAIN.BATCH_IMAGES, -1), name='label_reshape')
@@ -230,7 +261,7 @@ def get_resnet_fpn_train(num_classes=config.NUM_CLASSES,
         labels.append(label)
 
     _c, _s = mx.symbol.concat, mx.symbol.add_n
-    group = mx.symbol.Group([_c(*rpn_cls_probes, dim=0), _s(*rpn_bbox_losses), _c(*cls_probes, dim=0), _s(*bbox_losses), mx.symbol.BlockGrad(_c(*labels, dim=0))])
+    group = mx.symbol.Group(rpn_cls_probes + rpn_bbox_losses + [_c(*cls_probes), _c(*bbox_losses), mx.symbol.BlockGrad(_c(*labels))])
     return group
 
 

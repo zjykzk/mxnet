@@ -215,28 +215,10 @@ class ROIIter(mx.io.DataIter):
         self.label = [mx.nd.array(all_label[name]) for name in self.label_name]
 
 
-class FPNAnchorLoader(mx.io.DataIter):
-    def __init__(self, feat_syms, roidb, batch_size=1, shuffle=False, ctx=None, work_load_list=None,
-                 feat_stride=16, anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2), allowed_border=0,
-                 aspect_grouping=False):
-        super(FPNAnchorLoader, self).__init__(feat_syms, roidb, batch_size, shuffle, ctx, work_load_list,
-            feat_stride=16, anchor_scales, anchor_ratios, allowed_border, aspect_grouping)
-
-    def _assign_anchor(self, data_shape, gt_boxes, im_info):
-        anchors = []
-        for fs in self.feat_sym:
-            _, feat_shape, _ = fs.infer_shape(**data_shape)
-            feat_shape = [int(i) for i in feat_shape[0]]
-        anchors.append(assign_anchor(feat_shape, gt_boxes, im_info,
-             self.feat_stride, self.anchor_scales, self.anchor_ratios, self.allowed_border))
-
-        return anchors
-
-
 class AnchorLoader(mx.io.DataIter):
     def __init__(self, feat_sym, roidb, batch_size=1, shuffle=False, ctx=None, work_load_list=None,
                  feat_stride=16, anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2), allowed_border=0,
-                 aspect_grouping=False):
+                 aspect_grouping=False, label_names=None):
         """
         This Iter will provide roi data to Fast R-CNN network
         :param feat_sym: to infer shape of assign_output
@@ -274,7 +256,7 @@ class AnchorLoader(mx.io.DataIter):
             self.data_name = ['data', 'im_info', 'gt_boxes']
         else:
             self.data_name = ['data']
-        self.label_name = ['label', 'bbox_target', 'bbox_weight']
+        self.label_name = label_names or ['label', 'bbox_target', 'bbox_weight']
 
         # status variable for synchronization between get_data and get_label
         self.cur = 0
@@ -366,7 +348,7 @@ class AnchorLoader(mx.io.DataIter):
             "Invalid settings for work load. "
         slices = _split_input_slice(self.batch_size, work_load_list)
 
-        # get testing data for each gpu
+        # get testing data for multigpu
         # each element in the list is the data used by different gpu
         data_list = []
         label_list = []
@@ -388,7 +370,7 @@ class AnchorLoader(mx.io.DataIter):
             data_shape = {k: v.shape for k, v in data.items()}
             del data_shape['im_info']
             # assign anchor for label
-            new_label_list.append(_assign_anchor(data_shape, label['gt_boxes'], data['im_info']))
+            new_label_list.append(self._assign_anchor(data_shape, label['gt_boxes'], data['im_info']))
 
             # add gt_boxes to data for e2e
             data['gt_boxes'] = label['gt_boxes'][np.newaxis, :, :]
@@ -399,7 +381,7 @@ class AnchorLoader(mx.io.DataIter):
 
         all_label = dict()
         for key in self.label_name:
-            pad = -1 if key == 'label' else 0
+            pad = -1 if key.startswith('label') else 0
             all_label[key] = tensor_vstack([batch[key] for batch in new_label_list], pad=pad)
 
         self.data = [mx.nd.array(all_data[key]) for key in self.data_name]
@@ -410,3 +392,39 @@ class AnchorLoader(mx.io.DataIter):
         feat_shape = [int(i) for i in feat_shape[0]]
         return assign_anchor(feat_shape, gt_boxes, im_info,
              self.feat_stride, self.anchor_scales, self.anchor_ratios, self.allowed_border)
+
+class FPNAnchorLoader(AnchorLoader):
+    def __init__(self, feat_syms, roidb, batch_size=1, shuffle=False, ctx=None, work_load_list=None,
+                 feat_stride=16, anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2), allowed_border=0,
+                 aspect_grouping=False):
+        super(FPNAnchorLoader, self).__init__(feat_syms, roidb, batch_size, shuffle, ctx, work_load_list,
+            feat_stride, anchor_scales, anchor_ratios, allowed_border, aspect_grouping,
+            reduce(lambda a, x: a + x, (['label%d'%i, 'bbox_target%d'%i, 'bbox_weight%d'%i] for i in range(len(feat_syms)))))
+
+    def _assign_anchor(self, data_shape, gt_boxes, im_info):
+        anchors = {}
+        for idx, fs in enumerate(self.feat_sym):
+            _, feat_shape, _ = fs.infer_shape(**data_shape)
+            feat_shape = [int(i) for i in feat_shape[0]]
+            anchors.update(assign_anchor(feat_shape, gt_boxes, im_info,
+                 self.feat_stride, self.anchor_scales, self.anchor_ratios, self.allowed_border, str(idx)))
+
+        return anchors
+
+    def infer_shape(self, max_data_shape=None, max_label_shape=None):
+        """ Return maximum data and label shape for single gpu """
+        if max_data_shape is None:
+            max_data_shape = []
+        if max_label_shape is None:
+            max_label_shape = []
+        max_shapes = dict(max_data_shape + max_label_shape)
+        input_batch_size = max_shapes['data'][0]
+        im_info = [[max_shapes['data'][2], max_shapes['data'][3], 1.0]]
+        label = {}
+        for idx, fs in enumerate(self.feat_sym):
+            _, feat_shape, _ = fs.infer_shape(**max_shapes)
+            label.update(assign_anchor(feat_shape[0], np.zeros((0, 5)), im_info,
+                                  self.feat_stride, self.anchor_scales, self.anchor_ratios, self.allowed_border, str(idx)))
+        label = [label[k] for k in self.label_name]
+        label_shape = [(k, tuple([input_batch_size] + list(v.shape[1:]))) for k, v in zip(self.label_name, label)]
+        return max_data_shape, label_shape

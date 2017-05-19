@@ -66,7 +66,7 @@ def get_rpn_batch(roidb):
 
 
 def assign_anchor(feat_shape, gt_boxes, im_info, feat_stride=16,
-                  scales=(8, 16, 32), ratios=(0.5, 1, 2), allowed_border=0):
+                  scales=(8, 16, 32), ratios=(0.5, 1, 2), allowed_border=0, suffix=''):
     """
     assign ground truth boxes to anchor positions
     :param feat_shape: infer output shape
@@ -225,7 +225,7 @@ def assign_anchor(feat_shape, gt_boxes, im_info, feat_stride=16,
     bbox_targets = bbox_targets.reshape((1, feat_height, feat_width, A * 4)).transpose(0, 3, 1, 2)
     bbox_weights = bbox_weights.reshape((1, feat_height, feat_width, A * 4)).transpose((0, 3, 1, 2))
 
-    label = {'label': labels,
-             'bbox_target': bbox_targets,
-             'bbox_weight': bbox_weights}
+    label = {'label'+suffix: labels,
+             'bbox_target'+suffix: bbox_targets,
+             'bbox_weight'+suffix: bbox_weights}
     return label

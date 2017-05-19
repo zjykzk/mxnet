@@ -7,12 +7,18 @@ import numpy as np
 
 from rcnn.config import config, default, generate_config
 from rcnn.symbol import *
-from rcnn.core import callback, metric
+from rcnn.core import callback, metric_fpn as metric
 from rcnn.core.loader import FPNAnchorLoader
 from rcnn.core.module import MutableModule
 from rcnn.utils.load_data import load_gt_roidb, merge_roidb, filter_roidb
 from rcnn.utils.load_model import load_param
 
+
+def print_shape(sym, names, shapes):
+    return
+    for name in names:
+        s = sym.get_internals()[name]
+        pprint.pprint('print_shape:', s.name, s.infer_shape(**shapes))
 
 def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
               lr=0.001, lr_step='5'):
@@ -29,7 +35,8 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
 
     # load symbol
     sym = eval('get_' + args.network + '_train')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
-    feat_syms = [sym.get_internals()['rpn_cls_score_%d_output' % i] for i in range(4)]
+    feat_count = 4
+    feat_syms = [sym.get_internals()['rpn_cls_score_%d_output' % i] for i in range(feat_count)]
 
     # setup multi-gpu
     batch_size = len(ctx)
@@ -66,22 +73,32 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     aux_shape_dict = dict(zip(sym.list_auxiliary_states(), aux_shape))
     print('output shape')
     pprint.pprint(out_shape_dict)
+    print_shape(sym, ['rpn_cls_prob_%d_output' % i for i in range(feat_count)], data_shape_dict)
 
     # load and initialize params
     if args.resume:
         arg_params, aux_params = load_param(prefix, begin_epoch, convert=True)
     else:
         arg_params, aux_params = load_param(pretrained, epoch, convert=True)
-        arg_params['rpn_conv_3x3_weight'] = mx.random.normal(0, 0.01, shape=arg_shape_dict['rpn_conv_3x3_weight'])
-        arg_params['rpn_conv_3x3_bias'] = mx.nd.zeros(shape=arg_shape_dict['rpn_conv_3x3_bias'])
-        arg_params['rpn_cls_score_weight'] = mx.random.normal(0, 0.01, shape=arg_shape_dict['rpn_cls_score_weight'])
-        arg_params['rpn_cls_score_bias'] = mx.nd.zeros(shape=arg_shape_dict['rpn_cls_score_bias'])
-        arg_params['rpn_bbox_pred_weight'] = mx.random.normal(0, 0.01, shape=arg_shape_dict['rpn_bbox_pred_weight'])
-        arg_params['rpn_bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['rpn_bbox_pred_bias'])
-        arg_params['cls_score_weight'] = mx.random.normal(0, 0.01, shape=arg_shape_dict['cls_score_weight'])
-        arg_params['cls_score_bias'] = mx.nd.zeros(shape=arg_shape_dict['cls_score_bias'])
-        arg_params['bbox_pred_weight'] = mx.random.normal(0, 0.001, shape=arg_shape_dict['bbox_pred_weight'])
-        arg_params['bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['bbox_pred_bias'])
+        for k in sym.list_arguments():
+            if k in data_shape_dict:
+                continue
+
+            if k.endswith('weight') or k.endswith('gamma') or k.endswith('beta'):
+                arg_params[k] = mx.random.normal(0, 0.1, shape=arg_shape_dict[k])
+                continue
+
+            if k.endswith('bias'):
+                arg_params[k] = mx.nd.zeros(shape=arg_shape_dict[k])
+
+        for k in sym.list_auxiliary_states():
+            if k in data_shape_dict:
+                continue
+
+            if k.endswith('mean') or k.endswith('var'):
+                #aux_params[k] = mx.random.normal(0, 0.01, shape=aux_shape_dict[k])
+                aux_params[k] = mx.nd.zeros(shape=aux_shape_dict[k])
+
 
     # check parameter shapes
     for k in sym.list_arguments():
