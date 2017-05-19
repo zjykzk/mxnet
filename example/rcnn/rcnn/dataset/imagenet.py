@@ -258,12 +258,12 @@ class imagenet(IMDB):
                 continue
             for im_ind, index in enumerate(self.image_set_index):
                 dets = []
-                for i in range(detections_list.shape[0]):
+                #for i in range(detections_list.shape[0]):
 #      dets.append() =
-                if len(dets) == 0:
-                    continue
+                #if len(dets) == 0:
+                    #continue
                         # the VOCdevkit expects 1-based indices
-                    for k in range(dets.shape[0]):
+                    #for k in range(dets.shape[0]):
 #           f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
                 #    format(index, dets[k, -1],
                 #       dets[k, 0] + 1, dets[k, 1] + 1, dets[k, 2] + 1, dets[k, 3] + 1))
