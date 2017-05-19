@@ -34,7 +34,7 @@ size. Various methods for data manipulation and computation are provided.
 ```
 
 A detailed tutorial is available at
-[http://mxnet.io/tutorials/python/ndarray.html](http://mxnet.io/tutorials/python/ndarray.html)..
+[http://mxnet.io/tutorials/basic/ndarray.html](http://mxnet.io/tutorials/basic/ndarray.html)..
 
 ```eval_rst
 
@@ -369,8 +369,13 @@ In the rest of this document, we first overview the methods provided by the
 .. autosummary::
     :nosignatures:
 
-    uniform
-    normal
+    random_uniform
+    random_normal
+    random_gamma
+    random_exponential
+    random_poisson
+    random_negative_binomial
+    random_generalized_negative_binomial
     mxnet.random.seed
 ```
 
