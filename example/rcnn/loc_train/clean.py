@@ -157,15 +157,15 @@ def _load_class_wnids(map_det_path):
 
 
 def clean_train():
-    clean('train.good.images', get_statisfied_train_images)
+    clean('train.txt', get_statisfied_train_images)
 
 
 def clean_val():
-    clean('val.good.images', get_statisfied_val_images)
+    clean('val.txt', get_statisfied_val_images)
 
 
 def clean_test():
-    clean('test.good.images', get_statisfied_val_images)
+    clean('test.txt', get_statisfied_val_images)
 
 
 def clean(outfile, builder):
