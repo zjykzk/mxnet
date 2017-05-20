@@ -89,9 +89,9 @@ class imagenet(IMDB):
         assert os.path.exists(image_set_index_file), 'Path does not exist: {}'.format(image_set_index_file)
         with open(image_set_index_file) as f:
               if self.image_set == "val":
-   	      	image_set_index = [x.split(' ')[0] for x in f.readlines()]
+                    image_set_index = [x.split(' ')[0] for x in f.readlines()]
               else:
-		image_set_index = [x.strip() for x in f.readlines()]
+                    image_set_index = [x.strip() for x in f.readlines()]
         return image_set_index
 
     def image_path_from_index(self, index):
@@ -114,9 +114,9 @@ class imagenet(IMDB):
             with open(cache_file, 'rb') as fid:
                 roidb = cPickle.load(fid)
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
-	    for gt in roidb:
-		if gt['boxes'].shape[0]==0:
-		   print(gt['image'])
+        for gt in roidb:
+            if gt['boxes'].shape[0]==0:
+                print(gt['image'])
             return roidb
 
         gt_roidb = [self.load_imagenet_annotation(index) for index in self.image_set_index]
@@ -142,7 +142,7 @@ class imagenet(IMDB):
         filename = os.path.join(self.data_path, 'Annotations','DET',self.image_set, index + '.xml')
 #	print (filename)
         tree = ET.parse(filename)
-	#print(tree)
+    #print(tree)
         objs = tree.findall('object')
 #        if not self.config['use_diff']:
  #           non_diff_objs = [obj for obj in objs if int(obj.find('difficult').text) == 0]
@@ -162,12 +162,12 @@ class imagenet(IMDB):
             y1 = float(bbox.find('ymin').text) 
             x2 = float(bbox.find('xmax').text)
             if x2 == size[1]:
-		print ("label xmax reach the image width")
-		x2 = x2 - 1 
+                print ("label xmax reach the image width")
+                x2 = x2 - 1
             y2 = float(bbox.find('ymax').text)
-	    if y2 == size[0]:
-		print ("label ymax reach the image height")
-		y2 = y2 - 1
+            if y2 == size[0]:
+                print ("label ymax reach the image height")
+                y2 = y2 - 1
             cls = class_to_index[obj.find('name').text.lower().strip()]
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = cls
@@ -249,6 +249,51 @@ class imagenet(IMDB):
         self.write_pascal_results(detections)
         self.do_python_eval()
 
+    def boxvoting(self, detections_list):
+        all_boxes = [[[] for _ in xrange(self.num_images)]
+                 for _ in xrange(self.num_classes)]
+
+        for cls_ind, cls in enumerate(self.classes):
+            if cls == '__background__':
+                continue
+            for im_ind, index in enumerate(self.image_set_index):
+                dets = []
+                #for i in range(detections_list.shape[0]):
+#      dets.append() =
+                #if len(dets) == 0:
+                    #continue
+                        # the VOCdevkit expects 1-based indices
+                    #for k in range(dets.shape[0]):
+#           f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
+                #    format(index, dets[k, -1],
+                #       dets[k, 0] + 1, dets[k, 1] + 1, dets[k, 2] + 1, dets[k, 3] + 1))
+
+    def evaluate_detections_merge(self, detections_list):
+        """
+        top level evaluations
+        :param detections: result matrix, [bbox, confidence]
+        :return: None
+        """
+        if detections_list.shape[0] <=1:
+            detections = detections_list
+        else:
+            detections = self.boxvoting(detections_list)
+        # make all these folders for results
+        result_dir = os.path.join(self.devkit_path, 'results')
+        if not os.path.exists(result_dir):
+            os.mkdir(result_dir)
+        year_folder = os.path.join(self.devkit_path, 'results', 'ImageNet')
+        if not os.path.exists(year_folder):
+            os.mkdir(year_folder)
+        res_file_folder = os.path.join(self.devkit_path, 'results', 'ImageNet' , 'Main')
+        if not os.path.exists(res_file_folder):
+            os.mkdir(res_file_folder)
+
+        self.write_pascal_results(detections)
+        self.do_python_eval()
+
+
+
     def get_result_file_template(self):
         """
         this is a template
@@ -304,16 +349,18 @@ class imagenet(IMDB):
             aps += [ap]
             print('AP for {} = {:.4f}'.format(cls, ap))
         print('Mean AP = {:.4f}'.format(np.mean(aps)))
-	self.ap = aps
+        self.ap = aps
+
     def save_ap(self,path = "saveap.txt"):
-	with open(path,"w") as f:
-	    for cls_ind, cls in enumerate(self.classes):
+        aps=[]
+        with open(path,"w") as f:
+            for cls_ind, cls in enumerate(self.classes):
                 if cls == '__background__':
                     continue
                 filename = self.get_result_file_template().format(cls)
-                rec, prec, ap = imagenet_eval(filename, annopath, imageset_file, cls, annocache,
-                                     ovthresh=0.5, use_07_metric=use_07_metric)
+                rec, prec, ap = imagenet_eval(filename, self.annopath, self.imageset_file, cls, self.annocache,
+                                     ovthresh=0.5, use_07_metric=True)
                 aps += [ap]
                 f.write('AP for {} = {:.4f}'.format(cls, ap))
             f.write('Mean AP = {:.4f}'.format(np.mean(aps)))
-	
+

@@ -61,7 +61,7 @@ All COCO experiments are conducted in MXNet-v0.8.
 ```bash
     bash script/vgg_voc07.sh 0,1,2,3
 ```
-
+ss
 ## I'm Feeling Lucky
 * Prepare: `bash script/additional_deps.sh`
 * Download training data: `bash script/get_voc.sh`
