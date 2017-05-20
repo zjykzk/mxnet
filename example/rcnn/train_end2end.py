@@ -86,12 +86,14 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
         arg_params['bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['bbox_pred_bias'])
         if args.use_global_context:
             # additional params for using global context
+            """
             for arg_param_name in sym.list_arguments():
                 if 'stage5' in arg_param_name:
                     # print(arg_param_name, arg_param_name.replace('stage5', 'stage4'))
                     arg_params[arg_param_name] = arg_params[arg_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
             arg_params['bn2_gamma'] = arg_params['bn1_gamma'].copy()
             arg_params['bn2_beta'] = arg_params['bn1_beta'].copy()
+            """
             for aux_param_name in sym.list_auxiliary_states():
                 if 'stage5' in aux_param_name:
                     # print(aux_param_name, aux_param_name.replace('stage5', 'stage4'))
@@ -187,7 +189,7 @@ def parse_args():
     parser.add_argument('--lr', help='base learning rate', default=default.e2e_lr, type=float)
     parser.add_argument('--lr_step', help='learning rate steps (in epoch)', default=default.e2e_lr_step, type=str)
     # tricks
-    parser.add_argument('--use_global_context', help='use roi global context for classification', default=False, type=bool)
+    parser.add_argument('--use_global_context', help='use roi global context for classification', action='store_true')
     args = parser.parse_args()
     return args
 
