@@ -294,17 +294,11 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
 
     # res5
     if use_global_context:
-        # weights to be shared
-        shared_weights = get_shared_weights()
-
         # res5 for original rois
-        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1',\
-                             sharing_weights=True, weights=shared_weights)
+        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
         for i in range(2, units[3] + 1):
-            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i,\
-                                 sharing_weights=True, weights=shared_weights)
-        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1',\
-                               gamma=shared_weights['bn1_gamma'], beta=shared_weights['bn1_beta'])
+            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i)
+        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
         relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
         pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
 
@@ -315,20 +309,17 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
             name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
             spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
         # res5 for global context
-        unit2 = residual_unit(data=roi_globalcontext_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage5_unit1',\
-                              sharing_weights=True, sharing_name='stage4_unit1', weights=shared_weights)
+        unit2 = residual_unit(data=roi_globalcontext_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage5_unit1')
         for i in range(2, units[3] + 1):
-            unit2 = residual_unit(data=unit2, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage5_unit%s' % i,\
-                                 sharing_weights=True, sharing_name='stage4_unit%s' % i, weights=sharing_weights)
-        bn2 = mx.sym.BatchNorm(data=unit2, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn2',\
-                               gamma=shared_weights['bn1_gamma'], beta=shared_weights['bn1_beta'])
+            unit2 = residual_unit(data=unit2, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage5_unit%s' % i)
+        bn2 = mx.sym.BatchNorm(data=unit2, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn2')
         relu2 = mx.sym.Activation(data=bn2, act_type='relu', name='relu2')
         pool2 = mx.symbol.Pooling(data=relu2, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool2')
         # concat two res5 features
         pool_concat = mx.symbol.Concat(pool1, pool2, dim = 1)
-        print("pool1:", pool1)
-        print("pool2:", pool2)
-        print("pool_concat:", pool_concat)
+        # print("pool1:", pool1)
+        # print("pool2:", pool2)
+        # print("pool_concat:", pool_concat)
 
     else:
         unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
@@ -355,7 +346,6 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
     # group output
     group = mx.symbol.Group([rois, cls_prob, bbox_pred])
     return group
-
 
 def get_resnet_rpn(num_anchors=config.NUM_ANCHORS):
     """

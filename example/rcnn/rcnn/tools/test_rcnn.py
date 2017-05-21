@@ -14,7 +14,7 @@ import numpy as np
 
 def test_rcnn(network, dataset, image_set, root_path, dataset_path,
               ctx, prefix, epoch,
-              vis, shuffle, has_rpn, proposal, thresh):
+              vis, shuffle, has_rpn, proposal, thresh, use_global_context):
     # set config
     if has_rpn:
         config.TEST.HAS_RPN = True
@@ -24,7 +24,7 @@ def test_rcnn(network, dataset, image_set, root_path, dataset_path,
 
     # load symbol and testing data
     if has_rpn:
-        sym = eval('get_' + network + '_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
+        sym = eval('get_' + network + '_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS, use_global_context=use_global_context)
         imdb = eval(dataset)(image_set, root_path, dataset_path)
         roidb = imdb.gt_roidb()
     else:
@@ -38,6 +38,21 @@ def test_rcnn(network, dataset, image_set, root_path, dataset_path,
 
     # load model
     arg_params, aux_params = load_param(prefix, epoch, convert=True, ctx=ctx, process=True)
+    if use_global_context:
+        # additional params for using global context
+        for arg_param_name in sym.list_arguments():
+            if 'stage5' in arg_param_name:
+                # print(arg_param_name, arg_param_name.replace('stage5', 'stage4'))
+                arg_params[arg_param_name] = arg_params[arg_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
+        arg_params['bn2_gamma'] = arg_params['bn1_gamma'].copy()
+        arg_params['bn2_beta'] = arg_params['bn1_beta'].copy()
+
+        for aux_param_name in sym.list_auxiliary_states():
+            if 'stage5' in aux_param_name:
+                # print(aux_param_name, aux_param_name.replace('stage5', 'stage4'))
+                aux_params[aux_param_name] = aux_params[aux_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
+        aux_params['bn2_moving_mean'] = aux_params['bn1_moving_mean'].copy()
+        aux_params['bn2_moving_var'] = aux_params['bn1_moving_var'].copy()
 
     # infer shape
     data_shape_dict = dict(test_data.provide_data)
@@ -76,6 +91,7 @@ def test_rcnn(network, dataset, image_set, root_path, dataset_path,
 
          return np.mean(imdb.ap)
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     # general
@@ -96,6 +112,9 @@ def parse_args():
     parser.add_argument('--shuffle', help='shuffle data on visualization', action='store_true')
     parser.add_argument('--has_rpn', help='generate proposals on the fly', action='store_true')
     parser.add_argument('--proposal', help='can be ss for selective search or rpn', default='rpn', type=str)
+    # tricks
+    parser.add_argument('--use_global_context', help='use roi global context for classification', action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -106,7 +125,7 @@ def main():
     print(args)
     test_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               ctx, args.prefix, args.epoch,
-              args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh)
+              args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh, args.use_global_context)
 
 if __name__ == '__main__':
     main()

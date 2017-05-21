@@ -10,4 +10,4 @@ export PYTHONUNBUFFERED=1
 
 #python train_end2end.py --network resnet --gpu $1
 python train_end2end.py --network resnet --gpu $1 --use_global_context
-python test.py --network resnet --gpu $gpu
+python test.py --network resnet --gpu $gpu --use_global_context
