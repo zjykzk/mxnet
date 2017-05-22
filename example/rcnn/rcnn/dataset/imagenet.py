@@ -88,10 +88,12 @@ class imagenet(IMDB):
         image_set_index_file = os.path.join(self.data_path, 'ImageSets', 'DET', self.image_set + '.txt')
         assert os.path.exists(image_set_index_file), 'Path does not exist: {}'.format(image_set_index_file)
         with open(image_set_index_file) as f:
-              if self.image_set == "val":
-                    image_set_index = [x.split(' ')[0] for x in f.readlines()]
-              else:
-                    image_set_index = [x.strip() for x in f.readlines()]
+            if self.image_set == "val":
+                image_set_index = [x.split(' ')[0] for x in f.readlines()]
+            elif self.image_set == "train":
+                image_set_index = [x.split(' ')[0] for x in f.readlines()]
+            else:
+                image_set_index = [x.strip() for x in f.readlines()]
         return image_set_index
 
     def image_path_from_index(self, index):
@@ -114,10 +116,10 @@ class imagenet(IMDB):
             with open(cache_file, 'rb') as fid:
                 roidb = cPickle.load(fid)
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
-        for gt in roidb:
-            if gt['boxes'].shape[0]==0:
-                print(gt['image'])
-            return roidb
+            for gt in roidb:
+                if gt['boxes'].shape[0]==0:
+                    print(gt['image'])
+                return roidb
 
         gt_roidb = [self.load_imagenet_annotation(index) for index in self.image_set_index]
         with open(cache_file, 'wb') as fid:

@@ -308,7 +308,7 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
 
     # Fast R-CNN
     if use_roi_align:
-        roi_align = mx.symbol.ROIAlign(
+        roi_pool = mx.symbol.ROIAlign(
             name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14),
             spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
     else:
