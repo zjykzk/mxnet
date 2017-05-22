@@ -27,7 +27,8 @@ def alternate_train(args, ctx, pretrained, epoch,
     train_rpn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               args.frequent, args.kvstore, args.work_load_list, args.no_flip, args.no_shuffle, args.resume,
               ctx, pretrained, epoch, 'model/rpn1', begin_epoch, rpn_epoch,
-              train_shared=False, lr=rpn_lr, lr_step=rpn_lr_step)
+              train_shared=False, lr=rpn_lr, lr_step=rpn_lr_step,
+              use_data_augmentation=args.use_data_augmentation)
 
     logging.info('########## GENERATE RPN DETECTION')
     image_sets = [iset for iset in args.image_set.split('+')]
@@ -40,13 +41,15 @@ def alternate_train(args, ctx, pretrained, epoch,
     train_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
                args.frequent, args.kvstore, args.work_load_list, args.no_flip, args.no_shuffle, args.resume,
                ctx, pretrained, epoch, 'model/rcnn1', begin_epoch, rcnn_epoch,
-               train_shared=False, lr=rcnn_lr, lr_step=rcnn_lr_step, proposal='rpn')
+               train_shared=False, lr=rcnn_lr, lr_step=rcnn_lr_step, proposal='rpn',
+               use_data_augmentation=args.use_data_augmentation, use_global_context=args.use_global_context,
+               use_roi_align=args.use_roi_align)
 
     logging.info('########## TRAIN RPN WITH RCNN INIT')
     train_rpn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               args.frequent, args.kvstore, args.work_load_list, args.no_flip, args.no_shuffle, args.resume,
               ctx, 'model/rcnn1', rcnn_epoch, 'model/rpn2', begin_epoch, rpn_epoch,
-              train_shared=True, lr=rpn_lr, lr_step=rpn_lr_step)
+              train_shared=True, lr=rpn_lr, lr_step=rpn_lr_step, use_data_augmentation=args.use_data_augmentation)
 
     logging.info('########## GENERATE RPN DETECTION')
     image_sets = [iset for iset in args.image_set.split('+')]
@@ -62,7 +65,9 @@ def alternate_train(args, ctx, pretrained, epoch,
     train_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
                args.frequent, args.kvstore, args.work_load_list, args.no_flip, args.no_shuffle, args.resume,
                ctx, 'model/rcnn2', 0, 'model/rcnn2', begin_epoch, rcnn_epoch,
-               train_shared=True, lr=rcnn_lr, lr_step=rcnn_lr_step, proposal='rpn')
+               train_shared=True, lr=rcnn_lr, lr_step=rcnn_lr_step, proposal='rpn',
+               use_data_augmentation=args.use_data_augmentation, use_global_context=args.use_global_context,
+               use_roi_align=args.use_roi_align)
 
     logger.info('########## COMBINE RPN2 WITH RCNN2')
     combine_model('model/rpn2', rpn_epoch, 'model/rcnn2', rcnn_epoch, 'model/final', 0)
@@ -95,6 +100,12 @@ def parse_args():
     parser.add_argument('--rcnn_epoch', help='end epoch of rcnn training', default=default.rcnn_epoch, type=int)
     parser.add_argument('--rcnn_lr', help='base learning rate', default=default.rcnn_lr, type=float)
     parser.add_argument('--rcnn_lr_step', help='learning rate steps (in epoch)', default=default.rcnn_lr_step, type=str)
+    # tricks
+    parser.add_argument('--use_global_context', help='use roi global context for classification', action='store_true')
+    parser.add_argument('--use_data_augmentation',
+                        help='randomly transform image in color, brightness, contrast, sharpness',\
+                        action='store_true')
+    parser.add_argument('--use_roi_align', help='replace ROIPooling with ROIAlign', action='store_true')
     args = parser.parse_args()
     return args
 

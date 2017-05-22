@@ -16,7 +16,7 @@ from ..utils.load_model import load_param
 def train_rcnn(network, dataset, image_set, root_path, dataset_path,
                frequent, kvstore, work_load_list, no_flip, no_shuffle, resume,
                ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
-               train_shared, lr, lr_step, proposal):
+               train_shared, lr, lr_step, proposal, use_data_augmentation, use_global_context, use_roi_align):
     # set up logger
     logging.basicConfig()
     logger = logging.getLogger()
@@ -29,7 +29,9 @@ def train_rcnn(network, dataset, image_set, root_path, dataset_path,
         config.TRAIN.BG_THRESH_LO = 0.1  # reproduce Fast R-CNN
 
     # load symbol
-    sym = eval('get_' + network + '_rcnn')(num_classes=config.NUM_CLASSES)
+    sym = eval('get_' + network + '_rcnn')(num_classes=config.NUM_CLASSES,
+                                           use_global_context=use_global_context,
+                                           use_roi_align=use_roi_align)
 
     # setup multi-gpu
     batch_size = len(ctx)
@@ -49,7 +51,8 @@ def train_rcnn(network, dataset, image_set, root_path, dataset_path,
 
     # load training data
     train_data = ROIIter(roidb, batch_size=input_batch_size, shuffle=not no_shuffle,
-                         ctx=ctx, work_load_list=work_load_list, aspect_grouping=config.TRAIN.ASPECT_GROUPING)
+                         ctx=ctx, work_load_list=work_load_list, aspect_grouping=config.TRAIN.ASPECT_GROUPING,
+                         use_data_augmentation=use_data_augmentation)
 
     # infer max shape
     max_data_shape = [('data', (input_batch_size, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
@@ -72,6 +75,22 @@ def train_rcnn(network, dataset, image_set, root_path, dataset_path,
         arg_params['cls_score_bias'] = mx.nd.zeros(shape=arg_shape_dict['cls_score_bias'])
         arg_params['bbox_pred_weight'] = mx.random.normal(0, 0.001, shape=arg_shape_dict['bbox_pred_weight'])
         arg_params['bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['bbox_pred_bias'])
+    if use_global_context:
+        # additional params for using global context
+        """
+        for arg_param_name in sym.list_arguments():
+            if 'stage5' in arg_param_name:
+                # print(arg_param_name, arg_param_name.replace('stage5', 'stage4'))
+                arg_params[arg_param_name] = arg_params[arg_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
+        arg_params['bn2_gamma'] = arg_params['bn1_gamma'].copy()
+        arg_params['bn2_beta'] = arg_params['bn1_beta'].copy()
+        """
+        for aux_param_name in sym.list_auxiliary_states():
+            if 'stage5' in aux_param_name:
+                # print(aux_param_name, aux_param_name.replace('stage5', 'stage4'))
+                aux_params[aux_param_name] = aux_params[aux_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
+        aux_params['bn2_moving_mean'] = aux_params['bn1_moving_mean'].copy()
+        aux_params['bn2_moving_var'] = aux_params['bn1_moving_var'].copy()
 
     # check parameter shapes
     for k in sym.list_arguments():
@@ -160,6 +179,12 @@ def parse_args():
     parser.add_argument('--lr_step', help='learning rate steps (in epoch)', default=default.rcnn_lr_step, type=str)
     parser.add_argument('--train_shared', help='second round train shared params', action='store_true')
     parser.add_argument('--proposal', help='can be ss for selective search or rpn', default='rpn', type=str)
+    # tricks
+    parser.add_argument('--use_global_context', help='use roi global context for classification', action='store_true')
+    parser.add_argument('--use_data_augmentation',
+                        help='randomly transform image in color, brightness, contrast, sharpness',
+                        action='store_true')
+    parser.add_argument('--use_roi_align', help='replace ROIPooling with ROIAlign', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -171,7 +196,9 @@ def main():
     train_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
                args.frequent, args.kvstore, args.work_load_list, args.no_flip, args.no_shuffle, args.resume,
                ctx, args.pretrained, args.pretrained_epoch, args.prefix, args.begin_epoch, args.end_epoch,
-               train_shared=args.train_shared, lr=args.lr, lr_step=args.lr_step, proposal=args.proposal)
+               train_shared=args.train_shared, lr=args.lr, lr_step=args.lr_step, proposal=args.proposal,
+               use_data_augmentation=args.use_data_augmentation, use_global_context=args.use_global_context,
+               use_roi_align=args.use_roi_align)
 
 if __name__ == '__main__':
     main()

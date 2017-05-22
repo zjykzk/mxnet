@@ -28,8 +28,9 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     config.TRAIN.BBOX_NORMALIZATION_PRECOMPUTED = True
 
     # load symbol
-    sym = eval('get_' + args.network + '_train')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS,\
-                                                 use_global_context=args.use_global_context)
+    sym = eval('get_' + args.network + '_train')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS,
+                                                 use_global_context=args.use_global_context,
+                                                 use_roi_align=args.use_roi_align)
     feat_sym = sym.get_internals()['rpn_cls_score_output']
 
     # setup multi-gpu
@@ -51,7 +52,8 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     train_data = AnchorLoader(feat_sym, roidb, batch_size=input_batch_size, shuffle=not args.no_shuffle,
                               ctx=ctx, work_load_list=args.work_load_list,
                               feat_stride=config.RPN_FEAT_STRIDE, anchor_scales=config.ANCHOR_SCALES,
-                              anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING)
+                              anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING,
+                              use_data_augmentation=args.use_data_augmentation)
 
     # infer max shape
     max_data_shape = [('data', (input_batch_size, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
@@ -84,22 +86,23 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
         arg_params['cls_score_bias'] = mx.nd.zeros(shape=arg_shape_dict['cls_score_bias'])
         arg_params['bbox_pred_weight'] = mx.random.normal(0, 0.001, shape=arg_shape_dict['bbox_pred_weight'])
         arg_params['bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['bbox_pred_bias'])
-        if args.use_global_context:
-            # additional params for using global context
-            """
-            for arg_param_name in sym.list_arguments():
-                if 'stage5' in arg_param_name:
-                    # print(arg_param_name, arg_param_name.replace('stage5', 'stage4'))
-                    arg_params[arg_param_name] = arg_params[arg_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
-            arg_params['bn2_gamma'] = arg_params['bn1_gamma'].copy()
-            arg_params['bn2_beta'] = arg_params['bn1_beta'].copy()
-            """
-            for aux_param_name in sym.list_auxiliary_states():
-                if 'stage5' in aux_param_name:
-                    # print(aux_param_name, aux_param_name.replace('stage5', 'stage4'))
-                    aux_params[aux_param_name] = aux_params[aux_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
-            aux_params['bn2_moving_mean'] = aux_params['bn1_moving_mean'].copy()
-            aux_params['bn2_moving_var'] = aux_params['bn1_moving_var'].copy()
+    if args.use_global_context:
+        # additional params for using global context
+        """
+        for arg_param_name in sym.list_arguments():
+            if 'stage5' in arg_param_name:
+                # print(arg_param_name, arg_param_name.replace('stage5', 'stage4'))
+                arg_params[arg_param_name] = arg_params[arg_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
+        arg_params['bn2_gamma'] = arg_params['bn1_gamma'].copy()
+        arg_params['bn2_beta'] = arg_params['bn1_beta'].copy()
+        """
+        for aux_param_name in sym.list_auxiliary_states():
+            if 'stage5' in aux_param_name:
+                # print(aux_param_name, aux_param_name.replace('stage5', 'stage4'))
+                aux_params[aux_param_name] = aux_params[aux_param_name.replace('stage5', 'stage4')].copy()  # params of stage5 is initialized from stage4
+        aux_params['bn2_moving_mean'] = aux_params['bn1_moving_mean'].copy()
+        aux_params['bn2_moving_var'] = aux_params['bn1_moving_var'].copy()
+
 
     # check parameter shapes
     for k in sym.list_arguments():
@@ -190,6 +193,10 @@ def parse_args():
     parser.add_argument('--lr_step', help='learning rate steps (in epoch)', default=default.e2e_lr_step, type=str)
     # tricks
     parser.add_argument('--use_global_context', help='use roi global context for classification', action='store_true')
+    parser.add_argument('--use_data_augmentation', help='randomly transform image in color, brightness, contrast, sharpness',\
+                        action='store_true')
+    parser.add_argument('--use_roi_align', help='replace ROIPooling with ROIAlign', action='store_true')
+
     args = parser.parse_args()
     return args
 
