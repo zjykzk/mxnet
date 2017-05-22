@@ -44,7 +44,7 @@ def get_rcnn_testbatch(roidb):
     return data, label, im_info
 
 
-def get_rcnn_batch(roidb):
+def get_rcnn_batch(roidb, use_data_augmentation=False):
     """
     return a dict of multiple images
     :param roidb: a list of dict, whose length controls batch size
@@ -52,7 +52,7 @@ def get_rcnn_batch(roidb):
     :return: data, label
     """
     num_images = len(roidb)
-    imgs, roidb = get_image(roidb)
+    imgs, roidb = get_image(roidb, use_data_augmentation)
     im_array = tensor_vstack(imgs)
 
     assert config.TRAIN.BATCH_ROIS % config.TRAIN.BATCH_IMAGES == 0, \

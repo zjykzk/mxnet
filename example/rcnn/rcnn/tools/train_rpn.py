@@ -16,7 +16,7 @@ from ..utils.load_model import load_param
 def train_rpn(network, dataset, image_set, root_path, dataset_path,
               frequent, kvstore, work_load_list, no_flip, no_shuffle, resume,
               ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
-              train_shared, lr, lr_step):
+              train_shared, lr, lr_step, use_data_augmentation):
     # set up logger
     logging.basicConfig()
     logger = logging.getLogger()
@@ -48,7 +48,8 @@ def train_rpn(network, dataset, image_set, root_path, dataset_path,
     train_data = AnchorLoader(feat_sym, roidb, batch_size=input_batch_size, shuffle=not no_shuffle,
                               ctx=ctx, work_load_list=work_load_list,
                               feat_stride=config.RPN_FEAT_STRIDE, anchor_scales=config.ANCHOR_SCALES,
-                              anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING)
+                              anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING,
+                              use_data_augmentation=use_data_augmentation)
 
     # infer max shape
     max_data_shape = [('data', (input_batch_size, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
@@ -162,6 +163,10 @@ def parse_args():
     parser.add_argument('--lr', help='base learning rate', default=default.rpn_lr, type=float)
     parser.add_argument('--lr_step', help='learning rate steps (in epoch)', default=default.rpn_lr_step, type=str)
     parser.add_argument('--train_shared', help='second round train shared params', action='store_true')
+    #  tricks
+    parser.add_argument('--use_data_augmentation',
+                        help='randomly transform image in color, brightness, contrast, sharpness',
+                        action='store_true')
     args = parser.parse_args()
     return args
 
@@ -173,7 +178,8 @@ def main():
     train_rpn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               args.frequent, args.kvstore, args.work_load_list, args.no_flip, args.no_shuffle, args.resume,
               ctx, args.pretrained, args.pretrained_epoch, args.prefix, args.begin_epoch, args.end_epoch,
-              train_shared=args.train_shared, lr=args.lr, lr_step=args.lr_step)
+              train_shared=args.train_shared, lr=args.lr, lr_step=args.lr_step,
+              use_data_augmentation=args.use_data_augmentation)
 
 if __name__ == '__main__':
     main()

@@ -25,6 +25,10 @@ def parse_args():
     parser.add_argument('--shuffle', help='shuffle data on visualization', action='store_true')
     parser.add_argument('--has_rpn', help='generate proposals on the fly', action='store_true', default=True)
     parser.add_argument('--proposal', help='can be ss for selective search or rpn', default='rpn', type=str)
+    # tricks
+    parser.add_argument('--use_global_context', help='use roi global context for classification', action='store_true')
+    parser.add_argument('--use_roi_align', help='replace ROIPooling with ROIAlign', action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -35,7 +39,8 @@ def main():
     print(args)
     test_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               ctx, args.prefix, args.epoch,
-              args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh)
+              args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh, args.use_global_context,
+              args.use_roi_align)
 
 if __name__ == '__main__':
     main()
