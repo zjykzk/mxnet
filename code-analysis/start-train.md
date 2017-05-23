@@ -1,3 +1,13 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [开启训练](#%E5%BC%80%E5%90%AF%E8%AE%AD%E7%BB%83)
+  - [fit 逻辑](#fit-%E9%80%BB%E8%BE%91)
+  - [fit中的重要逻辑](#fit%E4%B8%AD%E7%9A%84%E9%87%8D%E8%A6%81%E9%80%BB%E8%BE%91)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # 开启训练
 
 ## fit 逻辑

@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [超参数加载](#%E8%B6%85%E5%8F%82%E6%95%B0%E5%8A%A0%E8%BD%BD)
+  - [辅助参数(auxiliary params)](#%E8%BE%85%E5%8A%A9%E5%8F%82%E6%95%B0auxiliary-params)
+  - [优化参数(optimizer params)](#%E4%BC%98%E5%8C%96%E5%8F%82%E6%95%B0optimizer-params)
+      - [预定义更新策略](#%E9%A2%84%E5%AE%9A%E4%B9%89%E6%9B%B4%E6%96%B0%E7%AD%96%E7%95%A5)
+      - [自定义更新策略](#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%9B%B4%E6%96%B0%E7%AD%96%E7%95%A5)
+      - [预定义更新学习率方式](#%E9%A2%84%E5%AE%9A%E4%B9%89%E6%9B%B4%E6%96%B0%E5%AD%A6%E4%B9%A0%E7%8E%87%E6%96%B9%E5%BC%8F)
+      - [自定义更新学习率](#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%9B%B4%E6%96%B0%E5%AD%A6%E4%B9%A0%E7%8E%87)
+      - [使用方式](#%E4%BD%BF%E7%94%A8%E6%96%B9%E5%BC%8F)
+      - [train rcnn超参数加载](#train-rcnn%E8%B6%85%E5%8F%82%E6%95%B0%E5%8A%A0%E8%BD%BD)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 [TOC]
 
 # 超参数加载
