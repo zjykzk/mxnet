@@ -38,14 +38,14 @@ def get_rpn_testbatch(roidb):
     return data, label, im_info
 
 
-def get_rpn_batch(roidb):
+def get_rpn_batch(roidb, use_data_augmentation = False):
     """
     prototype for rpn batch: data, im_info, gt_boxes
     :param roidb: ['image', 'flipped'] + ['gt_boxes', 'boxes', 'gt_classes']
     :return: data, label
     """
     assert len(roidb) == 1, 'Single batch only'
-    imgs, roidb = get_image(roidb)
+    imgs, roidb = get_image(roidb, use_data_augmentation)
     im_array = imgs[0]
     im_info = np.array([roidb[0]['im_info']], dtype=np.float32)
 

@@ -6,7 +6,7 @@ from PIL import Image, ImageEnhance
 from ..config import config
 
 
-def get_image(roidb):
+def get_image(roidb, use_data_augmentation=False):
     """
     preprocess image and return processed roidb
     :param roidb: a list of roidb
@@ -26,8 +26,8 @@ def get_image(roidb):
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
         new_rec = roi_rec.copy()
-        #if roidb[i]['image_transform']:
-        im, new_rec = img_transform(im, new_rec)
+        if use_data_augmentation:
+            im, new_rec = img_transform(im, new_rec)
         scale_ind = random.randrange(len(config.SCALES))
         target_size = config.SCALES[scale_ind][0]
         max_size = config.SCALES[scale_ind][1]

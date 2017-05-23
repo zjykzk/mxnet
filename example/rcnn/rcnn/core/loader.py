@@ -89,7 +89,8 @@ class TestLoader(mx.io.DataIter):
 
 
 class ROIIter(mx.io.DataIter):
-    def __init__(self, roidb, batch_size=2, shuffle=False, ctx=None, work_load_list=None, aspect_grouping=False):
+    def __init__(self, roidb, batch_size=2, shuffle=False, ctx=None, work_load_list=None, aspect_grouping=False,\
+                 use_data_augmentation=False):
         """
         This Iter will provide roi data to Fast R-CNN network
         :param roidb: must be preprocessed
@@ -111,6 +112,7 @@ class ROIIter(mx.io.DataIter):
             self.ctx = [mx.cpu()]
         self.work_load_list = work_load_list
         self.aspect_grouping = aspect_grouping
+        self.use_data_augmentation = use_data_augmentation
 
         # infer properties from roidb
         self.size = len(roidb)
@@ -199,7 +201,7 @@ class ROIIter(mx.io.DataIter):
         label_list = []
         for islice in slices:
             iroidb = [roidb[i] for i in range(islice.start, islice.stop)]
-            data, label = get_rcnn_batch(iroidb)
+            data, label = get_rcnn_batch(iroidb, self.use_data_augmentation)
             data_list.append(data)
             label_list.append(label)
 
@@ -218,7 +220,7 @@ class ROIIter(mx.io.DataIter):
 class AnchorLoader(mx.io.DataIter):
     def __init__(self, feat_sym, roidb, batch_size=1, shuffle=False, ctx=None, work_load_list=None,
                  feat_stride=16, anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2), allowed_border=0,
-                 aspect_grouping=False):
+                 aspect_grouping=False, use_data_augmentation=False):
         """
         This Iter will provide roi data to Fast R-CNN network
         :param feat_sym: to infer shape of assign_output
@@ -246,6 +248,7 @@ class AnchorLoader(mx.io.DataIter):
         self.anchor_ratios = anchor_ratios
         self.allowed_border = allowed_border
         self.aspect_grouping = aspect_grouping
+        self.use_data_augmentation = use_data_augmentation
 
         # infer properties from roidb
         self.size = len(roidb)
@@ -354,7 +357,7 @@ class AnchorLoader(mx.io.DataIter):
         label_list = []
         for islice in slices:
             iroidb = [roidb[i] for i in range(islice.start, islice.stop)]
-            data, label = get_rpn_batch(iroidb)
+            data, label = get_rpn_batch(iroidb, self.use_data_augmentation)
             data_list.append(data)
             label_list.append(label)
 

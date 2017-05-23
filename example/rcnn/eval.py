@@ -41,15 +41,16 @@ def main():
     if args.exp_name is None:
         args.exp_name = datetime.now().strftime('frcnnEval_%m-%d')
     try:
-	exp = cc.create_experiment(args.exp_name)
+        exp = cc.create_experiment(args.exp_name)
     except:
         exp = cc.open_experiment(args.exp_name)
 
     for x in args.epoch.split(","):	
-	mAp = test_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
+        mAp = test_rcnn(args.network, args.dataset, args.image_set, args.root_path, args.dataset_path,
               ctx, args.prefix,int(x),
-              args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh)
-    	exp.add_scalar_value('mAp', mAp)
+              args.vis, args.shuffle, args.has_rpn, args.proposal, args.thresh, args.use_global_context,
+              args.use_roi_align)
+        exp.add_scalar_value('mAp', mAp)
     return 
     
 if __name__ == '__main__':

@@ -120,7 +120,7 @@ def get_resnet_conv(data):
     return unit
 
 
-def get_resnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS, use_global_context=False):
+def get_resnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS, use_global_context=False, use_roi_align=False):
     data = mx.symbol.Variable(name="data")
     im_info = mx.symbol.Variable(name="im_info")
     gt_boxes = mx.symbol.Variable(name="gt_boxes")
@@ -181,8 +181,21 @@ def get_resnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCH
     bbox_weight = group[3]
 
     # Fast R-CNN
-    roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    if use_roi_align:
+        roi_pool = mx.symbol.ROIAlign(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14),
+            spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    else:
+       roi_pool = mx.symbol.ROIPooling(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+
+    # res5
+    unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
+    for i in range(2, units[3] + 1):
+        unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i)
+    bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+    relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
 
     # res5
     if use_global_context:
@@ -203,9 +216,14 @@ def get_resnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCH
         #rois with global context
         rois_globalcontext = mx.symbol.Custom(rois=rois, im_info=im_info, global_context_scale=1.2,
                                               op_type='roi_global_context')
-        roi_globalcontext_pool = mx.symbol.ROIPooling(
-            name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
-            spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        if use_roi_align:
+            roi_globalcontext_pool = mx.symbol.ROIAlign(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        else:
+            roi_globalcontext_pool = mx.symbol.ROIPooling(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
         # res5 for global context
         unit2 = residual_unit(data=roi_globalcontext_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage5_unit1',\
                               sharing_weights=True, sharing_name='stage4_unit1', weights=shared_weights)
@@ -251,7 +269,7 @@ def get_resnet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCH
     return group
 
 
-def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS, use_global_context=False):
+def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS, use_global_context=False, use_roi_align=False):
     data = mx.symbol.Variable(name="data")
     im_info = mx.symbol.Variable(name="im_info")
 
@@ -289,8 +307,13 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
             threshold=config.TEST.RPN_NMS_THRESH, rpn_min_size=config.TEST.RPN_MIN_SIZE)
 
     # Fast R-CNN
-    roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    if use_roi_align:
+        roi_pool = mx.symbol.ROIAlign(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14),
+            spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    else:
+        roi_pool = mx.symbol.ROIPooling(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     # res5
     if use_global_context:
@@ -305,9 +328,15 @@ def get_resnet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHO
         #rois with global context
         rois_globalcontext = mx.symbol.Custom(rois=rois, im_info=im_info, global_context_scale=1.2,
                                               op_type='roi_global_context')
-        roi_globalcontext_pool = mx.symbol.ROIPooling(
-            name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
-            spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        if use_roi_align:
+            roi_globalcontext_pool = mx.symbol.ROIAlign(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        else:
+            roi_globalcontext_pool = mx.symbol.ROIPooling(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+
         # res5 for global context
         unit2 = residual_unit(data=roi_globalcontext_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage5_unit1')
         for i in range(2, units[3] + 1):
@@ -431,7 +460,7 @@ def get_resnet_rpn_test(num_anchors=config.NUM_ANCHORS):
 
     return group
 
-def get_resnet_rcnn(num_classes=config.NUM_CLASSES):
+def get_resnet_rcnn(num_classes=config.NUM_CLASSES, use_global_context=False, use_roi_align=False):
     """
     Fast R-CNN with VGG 16 conv layers
     :param num_classes: used to determine output size
@@ -451,19 +480,76 @@ def get_resnet_rcnn(num_classes=config.NUM_CLASSES):
 
     conv_feat = get_resnet_conv(data)
     # Fast R-CNN
-    roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    if use_roi_align:
+        roi_pool = mx.symbol.ROIAlign(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    else:
+        roi_pool = mx.symbol.ROIPooling(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     # res5
-    unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
-    for i in range(2, units[3] + 1):
-        unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i)
-    bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
-    relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
-    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+    if use_global_context:
+        # weights to be shared
+        shared_weights = get_shared_weights()
+
+        # res5 for original rois
+        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False,
+                             name='stage4_unit1',
+                             sharing_weights=True, weights=shared_weights)
+        for i in range(2, units[3] + 1):
+            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True,
+                                 name='stage4_unit%s' % i,
+                                 sharing_weights=True, weights=shared_weights)
+        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1', \
+                               gamma=shared_weights['bn1_gamma'], beta=shared_weights['bn1_beta'])
+        relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+
+        # rois with global context
+        rois_globalcontext = mx.symbol.Custom(rois=rois, im_info=im_info, global_context_scale=1.2,
+                                              op_type='roi_global_context')
+        if use_roi_align:
+            roi_globalcontext_pool = mx.symbol.ROIAlign(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        else:
+            roi_globalcontext_pool = mx.symbol.ROIPooling(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        # res5 for global context
+        unit2 = residual_unit(data=roi_globalcontext_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False,
+                              name='stage5_unit1',
+                              sharing_weights=True, sharing_name='stage4_unit1', weights=shared_weights)
+        for i in range(2, units[3] + 1):
+            unit2 = residual_unit(data=unit2, num_filter=filter_list[3], stride=(1, 1), dim_match=True,
+                                  name='stage5_unit%s' % i,
+                                  sharing_weights=True, sharing_name='stage4_unit%s' % i, weights=shared_weights)
+        bn2 = mx.sym.BatchNorm(data=unit2, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn2',
+                               gamma=shared_weights['bn1_gamma'], beta=shared_weights['bn1_beta'])
+        relu2 = mx.sym.Activation(data=bn2, act_type='relu', name='relu2')
+        pool2 = mx.symbol.Pooling(data=relu2, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool2')
+        # concat two res5 features
+        pool_concat = mx.symbol.Concat(pool1, pool2, dim=1)
+        print("pool1:", pool1)
+        print("pool2:", pool2)
+        print("pool_concat:", pool_concat)
+
+    else:
+        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False,
+                             name='stage4_unit1')
+        for i in range(2, units[3] + 1):
+            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True,
+                                 name='stage4_unit%s' % i)
+        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+        relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
 
     # classification
-    cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
+    if use_global_context:
+        cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool_concat, num_hidden=num_classes)
+    else:
+        cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
+
     cls_prob = mx.symbol.softmax(name='cls_prob', data=cls_score)
     # bounding box regression
     bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=pool1, num_hidden=num_classes * 4)
@@ -476,7 +562,7 @@ def get_resnet_rcnn(num_classes=config.NUM_CLASSES):
     group = mx.symbol.Group([rois, cls_prob, bbox_pred])
     return group
 
-def get_resnet_rcnn_test(num_classes=config.NUM_CLASSES):
+def get_resnet_rcnn_test(num_classes=config.NUM_CLASSES, use_global_context=False, use_roi_align=False):
     """
     Fast R-CNN Network with VGG
     :param num_classes: used to determine output size
@@ -491,19 +577,67 @@ def get_resnet_rcnn_test(num_classes=config.NUM_CLASSES):
     conv_feat = get_resnet_conv(data)
 
     # Fast R-CNN
-    roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
-
+    if use_roi_align:
+        roi_pool = mx.symbol.ROIAlign(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+    else:
+        roi_pool = mx.symbol.ROIPooling(
+            name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(14, 14),
+            spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
     # res5
-    unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False, name='stage4_unit1')
-    for i in range(2, units[3] + 1):
-        unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True, name='stage4_unit%s' % i)
-    bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
-    relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
-    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+    if use_global_context:
+        # res5 for original rois
+        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False,
+                             name='stage4_unit1')
+        for i in range(2, units[3] + 1):
+            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True,
+                                 name='stage4_unit%s' % i)
+        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+        relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+
+        # rois with global context
+        rois_globalcontext = mx.symbol.Custom(rois=rois, im_info=im_info, global_context_scale=1.2,
+                                              op_type='roi_global_context')
+        if use_roi_align:
+            roi_globalcontext_pool = mx.symbol.ROIAlign(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        else:
+            roi_globalcontext_pool = mx.symbol.ROIPooling(
+                name='roi_pool5_globcon', data=conv_feat, rois=rois_globalcontext, pooled_size=(14, 14),
+                spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+        # res5 for global context
+        unit2 = residual_unit(data=roi_globalcontext_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False,
+                              name='stage5_unit1')
+        for i in range(2, units[3] + 1):
+            unit2 = residual_unit(data=unit2, num_filter=filter_list[3], stride=(1, 1), dim_match=True,
+                                  name='stage5_unit%s' % i)
+        bn2 = mx.sym.BatchNorm(data=unit2, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn2')
+        relu2 = mx.sym.Activation(data=bn2, act_type='relu', name='relu2')
+        pool2 = mx.symbol.Pooling(data=relu2, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool2')
+        # concat two res5 features
+        pool_concat = mx.symbol.Concat(pool1, pool2, dim=1)
+        # print("pool1:", pool1)
+        # print("pool2:", pool2)
+        # print("pool_concat:", pool_concat)
+
+    else:
+        unit = residual_unit(data=roi_pool, num_filter=filter_list[3], stride=(2, 2), dim_match=False,
+                             name='stage4_unit1')
+        for i in range(2, units[3] + 1):
+            unit = residual_unit(data=unit, num_filter=filter_list[3], stride=(1, 1), dim_match=True,
+                                 name='stage4_unit%s' % i)
+        bn1 = mx.sym.BatchNorm(data=unit, fix_gamma=False, eps=eps, use_global_stats=use_global_stats, name='bn1')
+        relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
 
     # classification
-    cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
+    if use_global_context:
+        cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool_concat, num_hidden=num_classes)
+    else:
+        cls_score = mx.symbol.FullyConnected(name='cls_score', data=pool1, num_hidden=num_classes)
+
     cls_prob = mx.symbol.softmax(name='cls_prob', data=cls_score)
     # bounding box regression
     bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=pool1, num_hidden=num_classes * 4)

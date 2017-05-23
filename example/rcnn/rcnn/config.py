@@ -192,6 +192,15 @@ dataset.imagenet.root_path = 'data'
 dataset.imagenet.dataset_path = 'data/imagenet'
 dataset.imagenet.NUM_CLASSES = 201
 
+dataset.imagenet_loc_2017 = edict()
+dataset.imagenet_loc_2017.dataset = 'imagenet_loc_2017'
+dataset.imagenet_loc_2017.image_set = 'train'
+dataset.imagenet_loc_2017.test_image_set = 'val'
+dataset.imagenet_loc_2017.root_path = 'data/imagenet_loc_2017'
+dataset.imagenet_loc_2017.dataset_path = 'ILSVRC'
+dataset.imagenet_loc_2017.NUM_CLASSES = 1001
+
+
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():
