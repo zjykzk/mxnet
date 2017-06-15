@@ -45,7 +45,7 @@ class ROIGlobalContextOperator(mx.operator.CustomOp):
     def clip_boxes(box, im_shape):
         """
         Clip boxes to image boundaries.
-        :param boxes: [1, 5]
+       :param boxes: [1, 5]
         :param im_shape: tuple of 2
         :return: [1, 5]
         """

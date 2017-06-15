@@ -148,10 +148,19 @@ def assign_anchor(feat_shape, gt_boxes, im_info, feat_stride=16,
     if gt_boxes.size > 0:
         # overlap between the anchors and the gt boxes
         # overlaps (ex, gt)
+        # (anchor count, gt_box count)
         overlaps = bbox_overlaps(anchors.astype(np.float), gt_boxes.astype(np.float))
+        # 每个anchor对应重合最大的gt_box索引
+        # (anchors count,)
         argmax_overlaps = overlaps.argmax(axis=1)
+        # overlap 的大小
+        # (anchors count,)
         max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
+        # 每个gt_box对应重合最大的anchor索引
+        # (gt_box count,)
         gt_argmax_overlaps = overlaps.argmax(axis=0)
+        # overlap的大小
+        # (gt_box count,)
         gt_max_overlaps = overlaps[gt_argmax_overlaps, np.arange(overlaps.shape[1])]
         gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
 

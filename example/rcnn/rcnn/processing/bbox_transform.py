@@ -8,6 +8,7 @@ def bbox_overlaps(boxes, query_boxes):
 
 def bbox_overlaps_py(boxes, query_boxes):
     """
+    交集/并集
     determine overlaps between boxes and query_boxes
     :param boxes: n * 4 bounding boxes
     :param query_boxes: k * 4 bounding boxes
